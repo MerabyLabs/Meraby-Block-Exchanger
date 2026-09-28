@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -17,6 +18,48 @@ from mappings import MappingRegistry, build_registry
 from mappings.armor import ARMOR_PAIRS
 from resource_paths import bundled_profiles_dir
 from version import __version__
+
+
+class BinaryCacheError(OSError):
+    """The blueprint binary cache could not be removed."""
+
+
+def remove_blueprint_binary_cache(
+    binary_file: Path,
+    *,
+    attempts: int = 3,
+    backoff_seconds: float = 0.05,
+) -> None:
+    """Delete ``bp.sbcB5``. A lock is a hard error so callers cannot report success.
+
+    Space Engineers prefers the binary cache over ``bp.sbc``. Leaving the cache
+    in place after a write makes the edit look successful while the game loads
+    the old grid.
+    """
+    if attempts < 1:
+        attempts = 1
+    if not binary_file.exists():
+        return
+    last_error: Optional[OSError] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            binary_file.unlink()
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(backoff_seconds)
+                continue
+        else:
+            return
+    if last_error is None:
+        return
+    raise BinaryCacheError(
+        f"Failed to remove binary cache '{binary_file.name}' after {attempts} attempts. "
+        "Space Engineers would load the stale binary instead of this blueprint. "
+        f"Close the game or unlock the file and retry. ({last_error})"
+    ) from last_error
 
 
 class ArmorBlockReplacer:
@@ -256,11 +299,8 @@ class ArmorBlockReplacer:
 
         binary_file = output_file.with_name(output_file.name + "B5")
         if binary_file.exists():
-            try:
-                binary_file.unlink()
-                self.log(f"[INFO] Removed binary cache file: {binary_file}")
-            except Exception as exc:
-                self.log(f"[WARN] Could not remove binary cache file {binary_file}: {exc}")
+            remove_blueprint_binary_cache(binary_file)
+            self.log(f"[INFO] Removed binary cache file: {binary_file}")
 
         return self.blocks_scanned, self.replacements_made
 
@@ -415,6 +455,9 @@ def main() -> int:
             print("\nNo matching mapped blocks were found for the selected categories.")
         return 0
     except FileNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except BinaryCacheError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     except ValueError as exc:

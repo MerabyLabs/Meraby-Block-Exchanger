@@ -12,7 +12,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import safe_xml
 from mappings import MappingRegistry
-from se_armor_replacer import ArmorBlockReplacer
+from se_armor_replacer import ArmorBlockReplacer, remove_blueprint_binary_cache
 
 _SHIP_BLUEPRINT_TYPE = "MyObjectBuilder_ShipBlueprintDefinition"
 
@@ -148,7 +148,7 @@ class BlueprintConverter:
         binary_bp_file = dest_path / "bp.sbcB5"
         if binary_bp_file.exists():
             self.log(f"Removing binary blueprint cache: {binary_bp_file}")
-            binary_bp_file.unlink()
+            remove_blueprint_binary_cache(binary_bp_file)
         bp_file = dest_path / "bp.sbc"
         _sync_ship_blueprint_identity(bp_file, dest_path.name)
         return bp_file

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import io
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from contextlib import redirect_stderr
 from pathlib import Path
-import tempfile
+from unittest.mock import patch
 
 from blueprint_converter import BlueprintConverter
 from blueprint_fixtures import write_blueprint, write_blueprint_dir
+from se_armor_replacer import ArmorBlockReplacer, BinaryCacheError, main
 
 
 def _ship(tree: ET.ElementTree) -> ET.Element:
@@ -355,6 +359,83 @@ class TestBlueprintConverter(unittest.TestCase):
     def test_scale_missing_directory(self):
         with self.assertRaises(FileNotFoundError):
             self.converter.scale_grid_size(self.root / "nope", "Small")
+
+
+class TestBinaryCacheLock(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _lock_binary_cache(self, calls: dict):
+        real_unlink = Path.unlink
+
+        def fake(path: Path, missing_ok: bool = False):
+            if path.name.endswith("sbcB5"):
+                calls["n"] += 1
+                raise PermissionError("locked by game")
+            return real_unlink(path, missing_ok=missing_ok)
+
+        return fake
+
+    def test_process_blueprint_fails_when_binary_cache_is_locked(self):
+        source = write_blueprint_dir(
+            self.root,
+            "Ship",
+            ["LargeBlockArmorBlock"],
+            extra_files=["bp.sbcB5"],
+        )
+        replacer = ArmorBlockReplacer(include_profiles=False)
+        calls = {"n": 0}
+        with patch("se_armor_replacer.time.sleep", return_value=None):
+            with patch.object(Path, "unlink", self._lock_binary_cache(calls)):
+                with self.assertRaises(BinaryCacheError) as ctx:
+                    replacer.process_blueprint(str(source), create_backup=False)
+        self.assertEqual(calls["n"], 3)
+        self.assertIn("stale binary", str(ctx.exception).lower())
+        self.assertTrue((source / "bp.sbcB5").exists())
+
+    def test_copy_fails_when_destination_binary_cache_is_locked(self):
+        source = write_blueprint_dir(
+            self.root,
+            "Ship",
+            ["LargeBlockArmorBlock"],
+            extra_files=["bp.sbcB5"],
+        )
+        converter = BlueprintConverter(verbose=False, include_profiles=False)
+        calls = {"n": 0}
+        with patch("se_armor_replacer.time.sleep", return_value=None):
+            with patch.object(Path, "unlink", self._lock_binary_cache(calls)):
+                with self.assertRaises(BinaryCacheError) as ctx:
+                    converter.create_converted_blueprint(source)
+        self.assertEqual(calls["n"], 3)
+        self.assertIn("stale binary", str(ctx.exception).lower())
+        dest = self.root / "HEAVYARMOR_Ship"
+        self.assertTrue(dest.exists())
+        self.assertTrue((dest / "bp.sbcB5").exists())
+
+    def test_cli_returns_failure_when_binary_cache_is_locked(self):
+        source = write_blueprint_dir(
+            self.root,
+            "Ship",
+            ["LargeBlockArmorBlock"],
+            extra_files=["bp.sbcB5"],
+        )
+        calls = {"n": 0}
+        stderr = io.StringIO()
+        with patch("se_armor_replacer.time.sleep", return_value=None):
+            with patch.object(Path, "unlink", self._lock_binary_cache(calls)):
+                with patch("sys.argv", ["se_armor_replacer", str(source), "--no-backup", "--no-profiles"]):
+                    with redirect_stderr(stderr):
+                        code = main()
+        self.assertEqual(code, 1)
+        self.assertEqual(calls["n"], 3)
+        message = stderr.getvalue().lower()
+        self.assertIn("binary cache", message)
+        self.assertIn("stale binary", message)
+        self.assertNotIn("success", message)
 
 
 if __name__ == "__main__":
