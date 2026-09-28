@@ -113,13 +113,15 @@ public void Main(string argument, UpdateType updateSource) {
                 f"Removed {stripped} forbidden 'using' directive(s) (IO/threading/net/reflection)."
             )
 
-        # 2. Check and fix missing Main()
-        if not re.search(r"\bvoid\s+Main\s*\(", code, re.IGNORECASE):
+        # 2. Check and fix missing Main() (ignore comments and string literals)
+        masked = mask_csharp_non_code(code)
+        if not re.search(r"\bvoid\s+Main\s*\(", masked, re.IGNORECASE):
             code += "\n\n// [AUTO-FIX] Added missing Main entry point\npublic void Main(string argument, UpdateType updateSource) {\n    Echo(\"PB Active\");\n}\n"
             fixes.append("Added missing void Main() entry point method.")
 
         # 3. Check and fix missing Program() constructor
-        if not re.search(r"\bProgram\s*\(\s*\)", code):
+        masked = mask_csharp_non_code(code)
+        if not re.search(r"\bProgram\s*\(\s*\)", masked):
             # Prepend constructor if Main exists
             constructor_stub = "// [AUTO-FIX] Added standard Program constructor\npublic Program() {\n    Runtime.UpdateFrequency = UpdateFrequency.Update100;\n}\n\n"
             code = constructor_stub + code

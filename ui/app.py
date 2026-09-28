@@ -22,6 +22,7 @@ from blueprint_converter import BlueprintConverter
 from blueprint_scanner import BlueprintInfo, BlueprintScanner
 from mapping_profiles import ProfileManager
 from mappings import build_registry
+from mappings.registry import MappingValidationError, coerce_mergeable_categories
 import safe_xml
 from se_armor_replacer import ArmorBlockReplacer
 from subgrid_engine import GridMatrixVisualizer, SubgridHierarchyParser
@@ -78,7 +79,13 @@ class TacticalCommandCenter(ctk.CTk):
         self.registry = build_registry(include_builtin=True)
         self.profile_manager.register_profile_categories(self.registry)
 
-        self.enabled_categories = self._resolve_enabled_categories(self.settings.enabled_categories)
+        self.enabled_categories, repaired = coerce_mergeable_categories(
+            self.registry,
+            self._resolve_enabled_categories(self.settings.enabled_categories),
+        )
+        if repaired:
+            self.settings.enabled_categories = list(self.enabled_categories)
+            self.settings_store.save(self.settings)
         self.conversion_mode = "light_to_heavy"
 
         self.scanner = BlueprintScanner(
@@ -511,9 +518,18 @@ class TacticalCommandCenter(ctk.CTk):
     # ------------------------------------------------------------------
 
     def set_conversion_mode(self, mode: str):
+        previous = self.conversion_mode
         self.conversion_mode = mode
-        self.scanner.set_reverse(mode == "heavy_to_light")
-        self.converter = self._build_converter()
+        try:
+            self.scanner.set_reverse(mode == "heavy_to_light")
+            self.converter = self._build_converter()
+        except MappingValidationError as exc:
+            self.conversion_mode = previous
+            self.scanner.set_reverse(previous == "heavy_to_light")
+            self.converter = self._build_converter()
+            self.control_panel._set_mode(previous, notify=False)
+            self.toasts.toast(f"That direction does not merge: {exc}", level="error", duration=6000)
+            return
         self._invalidate_preview_counts()
         if self.selected_blueprint:
             self.preview_panel.update_intel(self.selected_blueprint, mode)

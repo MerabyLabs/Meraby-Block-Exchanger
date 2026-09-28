@@ -106,6 +106,24 @@ class MappingRegistry:
             for name in enabled_categories:
                 selected.append(self.get(name))
 
+        if reverse:
+            # Many-to-one categories (DLC → vanilla) have no unique inverse.
+            # Reversing them collapses targets and collides with real swaps
+            # such as LargeAssembler ↔ BasicAssembler.
+            reversible: List[MappingCategory] = []
+            one_way: List[str] = []
+            for category in selected:
+                if self.category_is_reversible(category):
+                    reversible.append(category)
+                else:
+                    one_way.append(category.name)
+            if selected and not reversible:
+                raise MappingValidationError(
+                    "Cannot reverse one-way categories (multiple sources share a target): "
+                    + ", ".join(one_way)
+                )
+            selected = reversible
+
         merged: Dict[str, str] = {}
         target_to_source: Dict[str, str] = {}
 
@@ -127,6 +145,12 @@ class MappingRegistry:
 
         self.validate_pairs(merged, allow_duplicate_targets=not reverse)
         return merged
+
+    @staticmethod
+    def category_is_reversible(category: MappingCategory) -> bool:
+        """True when every target is unique, so the swap has one inverse."""
+        targets = list(category.pairs.values())
+        return len(targets) == len(set(targets))
 
     @staticmethod
     def validate_pairs(pairs: Dict[str, str], allow_duplicate_targets: bool = True) -> None:
@@ -156,6 +180,58 @@ class MappingRegistry:
         if not isinstance(category.pairs, dict) or not category.pairs:
             raise MappingValidationError(f"Category '{category.name}' has no mapping pairs")
         cls.validate_pairs(category.pairs)
+
+
+def authored_exchange_targets(
+    registry: MappingRegistry,
+    extra_one_way: Optional[Dict[str, str]] = None,
+) -> Dict[str, List[str]]:
+    """
+    Subtype targets taken only from registered pairs.
+
+    Injective categories contribute both directions. One-way categories
+    contribute forward pairs only. Callers must not synthesize subtype IDs.
+    """
+    index: Dict[str, List[str]] = {}
+
+    def add(source: str, target: str) -> None:
+        if not source or not target or source == target:
+            return
+        bucket = index.setdefault(source, [])
+        if target not in bucket:
+            bucket.append(target)
+
+    for category in registry.list_categories():
+        injective = MappingRegistry.category_is_reversible(category)
+        for source, target in category.pairs.items():
+            add(source, target)
+            if injective:
+                add(target, source)
+
+    if extra_one_way:
+        for source, target in extra_one_way.items():
+            add(source, target)
+    return index
+
+
+def coerce_mergeable_categories(
+    registry: MappingRegistry,
+    names: Sequence[str],
+) -> Tuple[List[str], bool]:
+    """
+    Keep ``names`` when they merge in the forward direction.
+
+    Returns ``(["armor"], True)`` when the saved set collides, so a GUI
+    launch does not die on a stale settings file.
+    """
+    requested = [name for name in names if name]
+    if not requested:
+        return ["armor"], False
+    try:
+        registry.build_mapping(reverse=False, enabled_categories=requested)
+    except MappingValidationError:
+        return ["armor"], True
+    return list(requested), False
 
 
 def build_registry(include_builtin: bool = True) -> MappingRegistry:

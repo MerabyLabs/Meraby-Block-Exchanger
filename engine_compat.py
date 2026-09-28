@@ -251,6 +251,12 @@ class SE2MigrationBridge:
         se2_payload = {
             "engine_target": GameEngine.SPACE_ENGINEERS_2.value,
             "format_version": "3.0.0",
+            "translation_status": "unverified_internal_placeholders",
+            "note": (
+                "subtype values are MBX-internal placeholders for planning. "
+                "They are not Keen Space Engineers 2 block IDs and were not "
+                "checked against a game install."
+            ),
             "blueprint_name": bp_folder.name,
             "grids": grids_data,
             "generator": f"SE-Block-Exchanger-{__version__}",

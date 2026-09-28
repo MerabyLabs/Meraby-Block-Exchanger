@@ -176,10 +176,10 @@ class PBScriptValidator:
                         )
                     )
 
-        # 4. Entry point detection
-        has_program = bool(RE_PROGRAM_CTOR.search(code))
-        has_main = bool(RE_MAIN_METHOD.search(code))
-        has_save = bool(RE_SAVE_METHOD.search(code))
+        # 4. Entry point detection (ignore comments and string literals)
+        has_program = bool(RE_PROGRAM_CTOR.search(structure))
+        has_main = bool(RE_MAIN_METHOD.search(structure))
+        has_save = bool(RE_SAVE_METHOD.search(structure))
 
         if not has_main:
             diagnostics.append(
@@ -192,8 +192,8 @@ class PBScriptValidator:
                 )
             )
 
-        # 5. Static instruction complexity estimation
-        estimated_instructions = cls._estimate_instructions(code)
+        # 5. Static instruction complexity estimation (code only)
+        estimated_instructions = cls._estimate_instructions(structure)
         if estimated_instructions > ESTIMATED_INSTRUCTION_LIMIT:
             diagnostics.append(
                 PBDiagnostic(
