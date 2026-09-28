@@ -1,6 +1,5 @@
 """
-Main Application Window
-Integrates all panel components into the Tactical Command Center.
+Main window for Meraby Block Exchanger (MBX).
 """
 
 from __future__ import annotations
@@ -61,7 +60,7 @@ class TacticalCommandCenter(ctk.CTk):
         super().__init__()
         TacticalTheme.resolve_fonts()
 
-        self.title("SE Block Exchanger")
+        self.title("Meraby Block Exchanger")
         self.geometry("1360x900")
         self.configure(fg_color=TacticalTheme.BG_DARK)
         self.minsize(1080, 700)
@@ -260,7 +259,7 @@ class TacticalCommandCenter(ctk.CTk):
         help_menu.add_command(label="Discord", command=lambda: webbrowser.open("https://discord.com/"))
         help_menu.add_command(
             label="Report an Issue",
-            command=lambda: webbrowser.open("https://github.com/MerabyLabs/SE-Block-Exchanger/issues"),
+            command=lambda: webbrowser.open("https://github.com/MerabyLabs/Meraby-Block-Exchanger/issues"),
         )
         menubar.add_cascade(label="Help", menu=help_menu)
         self.configure(menu=menubar)
@@ -920,7 +919,9 @@ class TacticalCommandCenter(ctk.CTk):
                 icon = f"{target},0"
             else:
                 root = project_root()
-                exe_hits = sorted(root.glob("SE_Tactical_Command*.exe"))
+                exe_hits = sorted(root.glob("Meraby_Block_Exchanger*.exe"))
+                if not exe_hits:
+                    exe_hits = sorted(root.glob("SE_Tactical_Command*.exe"))
                 if exe_hits:
                     target = exe_hits[-1]
                     icon = f"{target},0"
@@ -939,13 +940,13 @@ class TacticalCommandCenter(ctk.CTk):
             icon_lit = icon.replace("'", "''")
             script = (
                 f"$Desktop = {ps_dir}; "
-                f"$Shortcut = Join-Path $Desktop 'SE Tactical Command.lnk'; "
+                f"$Shortcut = Join-Path $Desktop 'Meraby Block Exchanger.lnk'; "
                 "$Wsh = New-Object -ComObject WScript.Shell; "
                 "$Link = $Wsh.CreateShortcut($Shortcut); "
                 f"$Link.TargetPath = '{target_lit}'; "
                 f"$Link.WorkingDirectory = '{work_lit}'; "
                 f"$Link.IconLocation = '{icon_lit}'; "
-                "$Link.Description = 'Space Engineers Tactical Command'; "
+                "$Link.Description = 'Meraby Block Exchanger - Offline blueprint toolkit'; "
                 "$Link.Save()"
             )
             subprocess.run(
@@ -1327,7 +1328,7 @@ class TacticalCommandCenter(ctk.CTk):
 
     def show_changelog_window(self):
         win = ctk.CTkToplevel(self)
-        win.title(f"Changelog - SE Block Exchanger v{__version__}")
+        win.title(f"Changelog - Meraby Block Exchanger v{__version__}")
         win.geometry("980x700")
         win.configure(fg_color=TacticalTheme.BG_DARK)
 

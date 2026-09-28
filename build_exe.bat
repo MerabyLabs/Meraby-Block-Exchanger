@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo  Space Engineers Block Exchanger - Build Script
+echo  Meraby Block Exchanger (MBX) - Build Script
 echo ===================================================
 
 for /f %%i in ('python -c "from version import __version__; print(__version__)"') do set APP_VERSION=%%i
@@ -19,7 +19,7 @@ if not exist "app_icon.ico" (
 
 if exist "app_icon.ico" (
     pyinstaller --noconfirm --onefile --windowed ^
-        --name "SE_Tactical_Command_v%APP_VERSION%" ^
+        --name "Meraby_Block_Exchanger_v%APP_VERSION%" ^
         --icon "app_icon.ico" ^
         --add-data "README.md;." ^
         --add-data "LICENSE;." ^
@@ -32,7 +32,7 @@ if exist "app_icon.ico" (
         gui_standalone.py
 ) else (
     pyinstaller --noconfirm --onefile --windowed ^
-        --name "SE_Tactical_Command_v%APP_VERSION%" ^
+        --name "Meraby_Block_Exchanger_v%APP_VERSION%" ^
         --icon "NONE" ^
         --add-data "README.md;." ^
         --add-data "LICENSE;." ^

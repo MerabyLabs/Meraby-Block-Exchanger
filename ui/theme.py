@@ -6,7 +6,7 @@ import customtkinter as ctk
 
 
 class TacticalTheme:
-    """Color scheme and typography for the Block Exchanger UI."""
+    """Color scheme and typography for the Meraby Block Exchanger UI."""
 
     APPEARANCE_MODES = ("Light", "Dark", "System")
 

@@ -108,7 +108,7 @@ class PBScriptValidator:
                     rule_id="CHAR_LIMIT_EXCEEDED",
                     line_number=None,
                     message=f"Script length ({char_count:,} chars) exceeds the in-game PB limit ({MAX_PROGRAM_CHARACTERS:,}).",
-                    suggestion="Minify your code using SEBX Minifier or split logic across multiple Programmable Blocks.",
+                    suggestion="Minify the script or split logic across multiple Programmable Blocks.",
                 )
             )
         elif char_count > RECOMMENDED_SAFE_CHARACTERS:

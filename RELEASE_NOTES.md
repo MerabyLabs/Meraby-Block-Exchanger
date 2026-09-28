@@ -1,5 +1,15 @@
 # Release Notes
 
+**Meraby Block Exchanger** (MBX) — Offline blueprint toolkit
+
+Renamed from SE Tactical Command / former SEBX title branding; same toolkit. No Keen marks in title.
+
+Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
+
+Portable build: `Meraby_Block_Exchanger_v{semver}.exe`, with `Meraby_Block_Exchanger_v{semver}.exe.sha256` and `SHA256SUMS.txt` (lines use that exe basename). GitHub Release title: `Meraby Block Exchanger v{semver}`.
+
+Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is also unchanged. Existing installs keep their settings and profiles.
+
 ## v3.2.1 (2026-08-29)
 
 Patch for the portable Windows build. **v3.2.0.exe crashes if you open it from a desktop shortcut** (or any launch whose working directory is not the folder that contains `data/`). Download this build instead.
@@ -7,7 +17,7 @@ Patch for the portable Windows build. **v3.2.0.exe crashes if you open it from a
 ### Fixes
 - Packaged exe resolves `data/block_costs.json`, bundled profiles, changelog, and icons from the PyInstaller bundle (`_MEIPASS`), not the process working directory. Shortcut launch no longer shows `Fatal Error` / `No such file or directory: 'data\\block_costs.json'`.
 - Missing cost database no longer aborts startup; analytics runs with an empty catalog.
-- File → Create desktop shortcut targets the running `.exe` when frozen (and prefers `SE_Tactical_Command*.exe` from the shortcut script). Source launches still fall back to `launch.bat`.
+- File → Create desktop shortcut targets the running `.exe` when frozen (and prefers `Meraby_Block_Exchanger*.exe` from the shortcut script, then a previously published `SE_Tactical_Command*.exe` if that is the only build in the folder). Source launches still fall back to `launch.bat`. The shortcut name is `Meraby Block Exchanger.lnk`.
 - Frozen profile edits write to `%APPDATA%\SEBlockExchanger\profiles` so they survive updates; bundled profiles still load.
 - 64-bit Windows drag-and-drop no longer overflows `WPARAM`/`LPARAM` (`int too long to convert` / access violation).
 - Selective Exchange no longer crashes on the missing `FONT_CODE_BOLD` theme font.
@@ -15,9 +25,11 @@ Patch for the portable Windows build. **v3.2.0.exe crashes if you open it from a
 
 ## v3.2.0 (2026-08-29)
 
-Space Engineers Block Exchanger (Tactical Command) for Windows. Convert and analyse `.sbc` blueprints. In the GUI, **Convert writes a new copy**; the original ship is not overwritten.
+Windows desktop toolkit for local `.sbc` blueprints. In the GUI, **Convert writes a new copy**; the original ship is not overwritten.
 
-A Meraby Labs product. Free for personal, non-commercial use. Commercial use requires a license. See LICENSE. Not affiliated with or endorsed by Keen Software House.
+A Meraby Labs product. Free for personal, non-commercial use. Commercial use requires a license. See LICENSE.
+
+Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
 
 ### Desktop converter
 - Converter window is a product flow: pick a ship, see a live before/after, then convert a copy. Sentence-case labels, readable 15–17pt type, grouped category names, and a Convert button that states how many blocks will change.

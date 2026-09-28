@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "SE Block Exchanger Profile",
+  "title": "Meraby Block Exchanger Profile",
   "type": "object",
   "required": [
     "name",

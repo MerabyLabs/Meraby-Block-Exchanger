@@ -37,7 +37,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name=f'SE_Tactical_Command_v{__version__}',
+    name=f'Meraby_Block_Exchanger_v{__version__}',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
