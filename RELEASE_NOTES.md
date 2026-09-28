@@ -8,6 +8,8 @@ Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with o
 
 Portable build: `Meraby_Block_Exchanger_v{semver}.exe`, with `Meraby_Block_Exchanger_v{semver}.exe.sha256` and `SHA256SUMS.txt` (lines use that exe basename). GitHub Release title: `Meraby Block Exchanger v{semver}`.
 
+**Ship, after merge (Releases UI — not this PR):** the Latest release tag `v3.2.1` is still named `v3.2.1`. Rename that live release to `Meraby Block Exchanger v3.2.1`. Leave the uploaded binary as-is. GitHub About is not in this repo; it still reads “Proprietary Space Engineers blueprint toolkit by Meraby Labs…”. Update About when the slug becomes `MerabyLabs/Meraby-Block-Exchanger`, and keep Space Engineers out of the product title.
+
 Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is also unchanged. Existing installs keep their settings and profiles.
 
 ## v3.2.1 (2026-08-29)

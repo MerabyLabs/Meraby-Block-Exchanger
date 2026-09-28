@@ -46,7 +46,7 @@ Each release ships:
 
 GitHub Release title: `Meraby Block Exchanger v<version>`.
 
-Assets already published under the previous exe name are renamed on the release separately. This repository’s build scripts produce `Meraby_Block_Exchanger_v<version>.exe`. Do not use a v3.2.0 exe — it crashes when opened from a desktop shortcut.
+**Ship, after merge:** the Latest release (`v3.2.1`) is still titled `v3.2.1`. Update that name in the Releases UI to `Meraby Block Exchanger v3.2.1`. This PR does not replace the uploaded binary. New builds from `release.yml`, `Meraby_Block_Exchanger.spec`, and `build_exe.bat` are named `Meraby_Block_Exchanger_v<version>.exe`. Do not use a v3.2.0 exe — it crashes when opened from a desktop shortcut.
 
 Do not trust copies obtained from any other source. Typical blueprints folder:
 
