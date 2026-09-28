@@ -6,12 +6,15 @@ Handles safe copying and block conversion of Space Engineers blueprints.
 from __future__ import annotations
 
 import shutil
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import safe_xml
 from mappings import MappingRegistry
 from se_armor_replacer import ArmorBlockReplacer
+
+_SHIP_BLUEPRINT_TYPE = "MyObjectBuilder_ShipBlueprintDefinition"
 
 
 def _iter_cube_blocks(root):
@@ -30,6 +33,55 @@ def _apply_subtype_text(block, target: str) -> None:
         subtype_name.text = target
     if subtype_id is not None:
         subtype_id.text = target
+
+
+def _scale_subtype_prefix(current_val: str, source_prefix: str, dest_prefix: str) -> Optional[str]:
+    """Swap a leading Large/Small grid prefix only.
+
+    A mid-string Large↔Small replace turns LargeBlockLargeThrust into
+    SmallBlockSmallThrust. Lg↔Sm inside a name is the same class of miss.
+    """
+    if current_val.startswith(source_prefix):
+        return dest_prefix + current_val[len(source_prefix):]
+    lowered = source_prefix.lower()
+    if current_val.startswith(lowered):
+        return dest_prefix.lower() + current_val[len(lowered):]
+    return None
+
+
+def _sync_ship_blueprint_identity(bp_file: Path, identity: str) -> None:
+    """Set ShipBlueprint Id Subtype and DisplayName to the new folder name.
+
+    Mirrors projector splits: Id carries Type plus Subtype, and DisplayName
+    matches the blueprint the game lists. SubtypeId is updated only when the
+    copied blueprint already has that child.
+    """
+    tree = safe_xml.parse(bp_file)
+    root = tree.getroot()
+    ships = root.findall(".//ShipBlueprint")
+    if not ships:
+        return
+    for ship in ships:
+        id_elem = ship.find("Id")
+        if id_elem is None:
+            id_elem = ET.Element("Id")
+            ship.insert(0, id_elem)
+        if not (id_elem.get("Type") or "").strip():
+            id_elem.set("Type", _SHIP_BLUEPRINT_TYPE)
+        id_elem.set("Subtype", identity)
+        subtype_id = id_elem.find("SubtypeId")
+        if subtype_id is not None:
+            subtype_id.text = identity
+        direct_subtype = ship.find("SubtypeId")
+        if direct_subtype is not None:
+            direct_subtype.text = identity
+        display = ship.find("DisplayName")
+        if display is None:
+            display = ET.Element("DisplayName")
+            id_index = list(ship).index(id_elem)
+            ship.insert(id_index + 1, display)
+        display.text = identity
+    safe_xml.safe_write(tree, bp_file)
 
 
 class BlueprintConverter:
@@ -97,7 +149,9 @@ class BlueprintConverter:
         if binary_bp_file.exists():
             self.log(f"Removing binary blueprint cache: {binary_bp_file}")
             binary_bp_file.unlink()
-        return dest_path / "bp.sbc"
+        bp_file = dest_path / "bp.sbc"
+        _sync_ship_blueprint_identity(bp_file, dest_path.name)
+        return bp_file
 
     def _rewrite_with_mapping(self, bp_file: Path, mapping: Dict[str, str]) -> Tuple[int, int]:
         tree = safe_xml.parse(bp_file)
@@ -222,59 +276,45 @@ class BlueprintConverter:
         replacements = 0
         blocks_scanned = 0
 
-        for cube_blocks in root.findall(".//CubeBlocks"):
-            for block in cube_blocks.findall("MyObjectBuilder_CubeBlock"):
-                blocks_scanned += 1
-                subtype_name = block.find("SubtypeName")
-                subtype_id = block.find("SubtypeId")
+        for block in _iter_cube_blocks(root):
+            blocks_scanned += 1
+            subtype_name = block.find("SubtypeName")
+            subtype_id = block.find("SubtypeId")
 
-                elem_to_modify = []
-                current_val = None
+            elem_to_modify = []
+            current_val = None
 
-                if subtype_name is not None and subtype_name.text:
-                    elem_to_modify.append(subtype_name)
-                    current_val = subtype_name.text.strip()
-                if subtype_id is not None and subtype_id.text:
-                    elem_to_modify.append(subtype_id)
-                    if not current_val:
-                        current_val = subtype_id.text.strip()
+            if subtype_name is not None and subtype_name.text:
+                elem_to_modify.append(subtype_name)
+                current_val = subtype_name.text.strip()
+            if subtype_id is not None and subtype_id.text:
+                elem_to_modify.append(subtype_id)
+                if not current_val:
+                    current_val = subtype_id.text.strip()
 
-                if current_val and elem_to_modify:
-                    new_val = None
-                    if current_val.startswith(source_prefix):
-                        new_val = dest_prefix + current_val[len(source_prefix):]
-                    elif current_val.startswith(source_prefix.lower()):
-                        new_val = dest_prefix.lower() + current_val[len(source_prefix):]
-                    elif "Large" in current_val and target_size == "Small":
-                        new_val = current_val.replace("Large", "Small", 1)
-                    elif "Small" in current_val and target_size == "Large":
-                        new_val = current_val.replace("Small", "Large", 1)
-                    elif "Lg" in current_val and target_size == "Small":
-                        new_val = current_val.replace("Lg", "Sm", 1)
-                    elif "Sm" in current_val and target_size == "Large":
-                        new_val = current_val.replace("Sm", "Lg", 1)
+            if current_val and elem_to_modify:
+                new_val = _scale_subtype_prefix(current_val, source_prefix, dest_prefix)
+                if new_val and new_val != current_val:
+                    for elem in elem_to_modify:
+                        elem.text = new_val
+                    replacements += 1
 
-                    if new_val and new_val != current_val:
-                        for elem in elem_to_modify:
-                            elem.text = new_val
-                        replacements += 1
-
-                min_elem = block.find("Min")
-                if min_elem is not None:
-                    for axis in ("x", "y", "z"):
-                        raw = min_elem.attrib.get(axis)
-                        if raw is None:
-                            continue
-                        try:
-                            value = int(raw)
-                        except ValueError:
-                            continue
-                        # Large/small grid is 5:1. Truncate toward zero so
-                        # negative Min coords stay aligned (// floors toward -∞).
-                        if target_size == "Small":
-                            min_elem.attrib[axis] = str(value * 5)
-                        else:
-                            min_elem.attrib[axis] = str(int(value / 5))
+            min_elem = block.find("Min")
+            if min_elem is not None:
+                for axis in ("x", "y", "z"):
+                    raw = min_elem.attrib.get(axis)
+                    if raw is None:
+                        continue
+                    try:
+                        value = int(raw)
+                    except ValueError:
+                        continue
+                    # Large/small grid is 5:1. Truncate toward zero so
+                    # negative Min coords stay aligned (// floors toward -∞).
+                    if target_size == "Small":
+                        min_elem.attrib[axis] = str(value * 5)
+                    else:
+                        min_elem.attrib[axis] = str(int(value / 5))
 
         safe_xml.safe_write(tree, new_bp_file)
         self._history.append(dest_path)
