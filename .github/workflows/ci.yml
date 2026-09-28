@@ -35,7 +35,7 @@ jobs:
         run: ruff check . --select F,E9
 
       - name: Type check (mypy)
-        run: mypy se_armor_replacer.py blueprint_converter.py blueprint_scanner.py mapping_profiles.py blueprint_analytics.py update_checker.py --ignore-missing-imports
+        run: mypy se_armor_replacer.py blueprint_converter.py blueprint_scanner.py mapping_profiles.py blueprint_analytics.py update_checker.py engine_compat.py --ignore-missing-imports
 
       - name: Converter tests
         run: pytest -q

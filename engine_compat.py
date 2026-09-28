@@ -81,6 +81,147 @@ SE1_TO_SE2_TRANSLATION_TABLE: Dict[str, str] = {
 
 SE2_TO_SE1_TRANSLATION_TABLE: Dict[str, str] = {v: k for k, v in SE1_TO_SE2_TRANSLATION_TABLE.items()}
 
+_XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
+_XSI_TYPE = f"{{{_XSI_NS}}}type"
+
+# Used only when JSON has no stored original_se1_builder_type.
+_BUILDER_HINTS: Tuple[Tuple[str, str], ...] = (
+    ("hydrogenengine", "MyObjectBuilder_HydrogenEngine"),
+    ("radioantenna", "MyObjectBuilder_RadioAntenna"),
+    ("programmable", "MyObjectBuilder_ProgrammableBlock"),
+    ("thrust", "MyObjectBuilder_Thrust"),
+    ("cockpit", "MyObjectBuilder_Cockpit"),
+    ("controlseat", "MyObjectBuilder_Cockpit"),
+    ("battery", "MyObjectBuilder_BatteryBlock"),
+    ("reactor", "MyObjectBuilder_Reactor"),
+    ("generator", "MyObjectBuilder_Reactor"),
+    ("gyro", "MyObjectBuilder_Gyro"),
+    ("antenna", "MyObjectBuilder_RadioAntenna"),
+    ("beacon", "MyObjectBuilder_Beacon"),
+    ("cargo", "MyObjectBuilder_CargoContainer"),
+    ("drill", "MyObjectBuilder_ShipDrill"),
+    ("welder", "MyObjectBuilder_ShipWelder"),
+    ("grinder", "MyObjectBuilder_ShipGrinder"),
+)
+
+
+def _local_name(value: str) -> str:
+    if "}" in value:
+        return value.split("}", 1)[1]
+    if ":" in value:
+        return value.split(":", 1)[1]
+    return value
+
+
+def _builder_type_from_element(block_elem: ET.Element) -> str:
+    for key, value in block_elem.attrib.items():
+        if key == _XSI_TYPE or key == "xsi:type":
+            return _local_name(value)
+    tag = _local_name(block_elem.tag)
+    return tag or "MyObjectBuilder_CubeBlock"
+
+
+def infer_builder_type(subtype: str) -> str:
+    """Map an SE1 subtype to a builder when the original xsi:type was not stored."""
+    lowered = subtype.lower()
+    for needle, builder in _BUILDER_HINTS:
+        if needle in lowered:
+            return builder
+    return "MyObjectBuilder_CubeBlock"
+
+
+def _orientation_from_element(block_elem: ET.Element) -> Optional[Dict[str, str]]:
+    orient = block_elem.find("BlockOrientation")
+    if orient is None:
+        return None
+    forward = orient.attrib.get("Forward")
+    up = orient.attrib.get("Up")
+    if not forward and not up:
+        return None
+    return {"forward": forward or "Forward", "up": up or "Up"}
+
+
+def _entity_id_from_element(block_elem: ET.Element) -> Optional[str]:
+    entity = block_elem.find("EntityId")
+    if entity is None or not entity.text or not entity.text.strip():
+        return None
+    return entity.text.strip()
+
+
+def _axis_int(elem: Optional[ET.Element], axis: str) -> int:
+    if elem is None:
+        return 0
+    raw = elem.attrib.get(axis, "0")
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _iter_migration_grids(root: ET.Element) -> List[ET.Element]:
+    grids = root.findall(".//CubeGrids/CubeGrid")
+    if grids:
+        return grids
+    return [grid for grid in root.findall(".//CubeGrid") if grid.find("CubeBlocks") is not None]
+
+
+def _subtype_text(block_elem: ET.Element) -> str:
+    sub_name = block_elem.find("SubtypeName")
+    sub_id = block_elem.find("SubtypeId")
+    st_elem = sub_name if sub_name is not None else sub_id
+    if st_elem is not None and st_elem.text and st_elem.text.strip():
+        return st_elem.text.strip()
+    return "UnknownBlock"
+
+
+def _se1_subtype_from_json(block: Dict[str, Any]) -> Tuple[str, bool]:
+    """Return the SE1 subtype and whether it was a real SE2 translation.
+
+    Unmapped blocks stay on their original subtype. VR3_Legacy_* is only
+    recovered for older payloads and is not treated as a real VRAGE3 block.
+    Unknown ids are not replaced with armor.
+    """
+    original = block.get("original_se1_subtype")
+    se2_st = str(block.get("subtype") or "")
+    if isinstance(original, str) and original.strip():
+        translated = bool(block.get("se2_mapped")) or se2_st in SE2_TO_SE1_TRANSLATION_TABLE
+        return original.strip(), translated
+    if se2_st in SE2_TO_SE1_TRANSLATION_TABLE:
+        return SE2_TO_SE1_TRANSLATION_TABLE[se2_st], True
+    if se2_st.startswith("VR3_Legacy_"):
+        recovered = se2_st[len("VR3_Legacy_"):]
+        return recovered or se2_st, False
+    return se2_st or "UnknownBlock", False
+
+
+def _resolve_builder_type(block: Dict[str, Any], se1_subtype: str) -> str:
+    stored = block.get("original_se1_builder_type")
+    if isinstance(stored, str) and stored.strip():
+        return stored.strip()
+    return infer_builder_type(se1_subtype)
+
+
+def _orientation_from_json(block: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+    orientation = block.get("orientation")
+    if not isinstance(orientation, dict):
+        return None
+    forward = orientation.get("forward") or orientation.get("Forward")
+    up = orientation.get("up") or orientation.get("Up")
+    if not forward and not up:
+        return None
+    return (str(forward or "Forward"), str(up or "Up"))
+
+
+def _entity_id_from_json(block: Dict[str, Any]) -> Optional[str]:
+    for key in ("original_se1_entity_id", "entity_id"):
+        value = block.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
 
 class EngineVersionDetector:
     """Detects Space Engineers version and blueprint serialization format."""
@@ -212,7 +353,7 @@ class SE2MigrationBridge:
         converted = 0
 
         grids_data: List[Dict[str, Any]] = []
-        for grid_elem in root.findall(".//CubeGrids/CubeGrid"):
+        for grid_elem in _iter_migration_grids(root):
             custom_name_elem = grid_elem.find("CustomName")
             custom_name = custom_name_elem.text.strip() if custom_name_elem is not None and custom_name_elem.text else "Grid"
             grid_size_elem = grid_elem.find("GridSizeEnum")
@@ -221,26 +362,36 @@ class SE2MigrationBridge:
             blocks_list: List[Dict[str, Any]] = []
             for block_elem in grid_elem.findall(".//CubeBlocks/*"):
                 scanned += 1
-                sub_name = block_elem.find("SubtypeName")
-                sub_id = block_elem.find("SubtypeId")
-                st_elem = sub_name if sub_name is not None else sub_id
-                st = st_elem.text.strip() if (st_elem is not None and st_elem.text) else "UnknownBlock"
-
-                se2_subtype = SE1_TO_SE2_TRANSLATION_TABLE.get(st, f"VR3_Legacy_{st}")
-                if st in SE1_TO_SE2_TRANSLATION_TABLE:
+                st = _subtype_text(block_elem)
+                mapped = st in SE1_TO_SE2_TRANSLATION_TABLE
+                if mapped:
+                    se2_subtype = SE1_TO_SE2_TRANSLATION_TABLE[st]
                     converted += 1
+                else:
+                    # Pass the original SE1 subtype through. Do not mint a
+                    # VR3_* id the game could treat as real content.
+                    se2_subtype = st
 
                 min_elem = block_elem.find("Min")
-                x = int(min_elem.attrib.get("x", 0)) if min_elem is not None else 0
-                y = int(min_elem.attrib.get("y", 0)) if min_elem is not None else 0
-                z = int(min_elem.attrib.get("z", 0)) if min_elem is not None else 0
-
-                blocks_list.append({
+                block_payload: Dict[str, Any] = {
                     "subtype": se2_subtype,
+                    "se2_mapped": mapped,
+                    "passthrough": not mapped,
                     "original_se1_subtype": st,
-                    "position": {"x": x, "y": y, "z": z},
-                    "orientation": {"forward": "Forward", "up": "Up"},
-                })
+                    "original_se1_builder_type": _builder_type_from_element(block_elem),
+                    "position": {
+                        "x": _axis_int(min_elem, "x"),
+                        "y": _axis_int(min_elem, "y"),
+                        "z": _axis_int(min_elem, "z"),
+                    },
+                }
+                entity_id = _entity_id_from_element(block_elem)
+                if entity_id is not None:
+                    block_payload["original_se1_entity_id"] = entity_id
+                orientation = _orientation_from_element(block_elem)
+                if orientation is not None:
+                    block_payload["orientation"] = orientation
+                blocks_list.append(block_payload)
 
             grids_data.append({
                 "name": custom_name,
@@ -285,36 +436,51 @@ class SE2MigrationBridge:
         scanned = 0
         converted = 0
 
+        ET.register_namespace("xsi", _XSI_NS)
+        ET.register_namespace("xsd", "http://www.w3.org/2001/XMLSchema")
         root = ET.Element("Definitions")
         ship_bps = ET.SubElement(root, "ShipBlueprints")
         ship_bp = ET.SubElement(ship_bps, "ShipBlueprint")
-        ship_bp.set("{http://www.w3.org/2001/XMLSchema-instance}type", "MyObjectBuilder_ShipBlueprintDefinition")
+        ship_bp.set(_XSI_TYPE, "MyObjectBuilder_ShipBlueprintDefinition")
 
         cube_grids = ET.SubElement(ship_bp, "CubeGrids")
         for grid_data in data.get("grids", []):
+            if not isinstance(grid_data, dict):
+                continue
             cg = ET.SubElement(cube_grids, "CubeGrid")
-            ET.SubElement(cg, "CustomName").text = grid_data.get("name", "Grid")
-            ET.SubElement(cg, "GridSizeEnum").text = grid_data.get("grid_size", "Large")
+            ET.SubElement(cg, "CustomName").text = str(grid_data.get("name") or "Grid")
+            ET.SubElement(cg, "GridSizeEnum").text = str(grid_data.get("grid_size") or "Large")
             cb = ET.SubElement(cg, "CubeBlocks")
 
             for block in grid_data.get("blocks", []):
+                if not isinstance(block, dict):
+                    continue
                 scanned += 1
-                se2_st = block.get("subtype", "")
-                se1_st = block.get("original_se1_subtype") or SE2_TO_SE1_TRANSLATION_TABLE.get(se2_st, "LargeBlockArmorBlock")
-                if se2_st in SE2_TO_SE1_TRANSLATION_TABLE or block.get("original_se1_subtype"):
+                se1_st, translated = _se1_subtype_from_json(block)
+                if translated:
                     converted += 1
 
                 b_elem = ET.SubElement(cb, "MyObjectBuilder_CubeBlock")
-                b_elem.set("{http://www.w3.org/2001/XMLSchema-instance}type", "MyObjectBuilder_CubeBlock")
+                b_elem.set(_XSI_TYPE, _resolve_builder_type(block, se1_st))
                 ET.SubElement(b_elem, "SubtypeName").text = se1_st
-                pos = block.get("position", {})
+                entity_id = _entity_id_from_json(block)
+                if entity_id is not None:
+                    ET.SubElement(b_elem, "EntityId").text = entity_id
+                orientation = _orientation_from_json(block)
+                if orientation is not None:
+                    ET.SubElement(b_elem, "BlockOrientation").attrib.update(
+                        {"Forward": orientation[0], "Up": orientation[1]}
+                    )
+                pos = block.get("position")
+                if not isinstance(pos, dict):
+                    pos = {}
                 ET.SubElement(b_elem, "Min").attrib.update({
                     "x": str(pos.get("x", 0)),
                     "y": str(pos.get("y", 0)),
                     "z": str(pos.get("z", 0)),
                 })
 
-        tree = ET.ElementTree(root)
+        tree: ET.ElementTree[ET.Element] = ET.ElementTree(root)
         out_sbc = target_dir / "bp.sbc"
         safe_xml.safe_write(tree, out_sbc)
 
