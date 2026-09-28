@@ -47,7 +47,7 @@ jobs:
         run: |
           $version = python -c "from version import __version__; print(__version__)"
           pyinstaller --noconfirm --onefile --windowed `
-            --name "SE_Tactical_Command_v$version" `
+            --name "Meraby_Block_Exchanger_v$version" `
             --icon "app_icon.ico" `
             --add-data "README.md;." `
             --add-data "LICENSE;." `
@@ -74,7 +74,8 @@ jobs:
             if ($i -gt ($start - 1) -and $lines[$i] -match '^## v') { break }
             $body.Add($lines[$i])
           }
-          $text = ($body -join "`n").Trim() + "`n"
+          $disclaimer = 'Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.'
+          $text = $disclaimer + "`n`n" + ($body -join "`n").Trim() + "`n"
           Set-Content -Path release_body.md -Value $text -Encoding utf8
           Get-Content release_body.md
 
@@ -89,12 +90,19 @@ jobs:
           }
           $lines | Set-Content -Path dist/SHA256SUMS.txt -Encoding ascii
           Get-Content dist/SHA256SUMS.txt
+          foreach ($exe in $exes) {
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $exe.FullName).Hash.ToLower()
+            $sidecar = Join-Path $exe.DirectoryName ($exe.Name + ".sha256")
+            Set-Content -Path $sidecar -Value "$hash  $($exe.Name)" -Encoding ascii
+          }
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
+          name: Meraby Block Exchanger ${{ github.ref_name }}
           body_path: release_body.md
           files: |
             dist/*.exe
             dist/SHA256SUMS.txt
+            dist/*.exe.sha256
 

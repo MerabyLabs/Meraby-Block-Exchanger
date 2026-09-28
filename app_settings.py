@@ -12,6 +12,7 @@ from typing import Dict, List
 
 
 def _default_settings_path() -> Path:
+    # Keep SEBlockExchanger so existing settings survive the MBX rename.
     appdata = os.getenv("APPDATA")
     if appdata:
         base = Path(appdata) / "SEBlockExchanger"

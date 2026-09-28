@@ -1,6 +1,6 @@
 # Profiles
 
-Profiles are JSON files with the `.sebx-profile` extension. Files in this folder load automatically when the app starts.
+Profiles are JSON files with the `.sebx-profile` extension. That extension is unchanged so profiles saved before the Meraby Block Exchanger rename still load. Files in this folder load automatically when the app starts.
 
 ## Bundled profiles
 

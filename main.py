@@ -1,5 +1,5 @@
 """
-Main application launcher for Space Engineers Block Exchanger (SE Tactical Command).
+Main application launcher for Meraby Block Exchanger (MBX).
 """
 
 from __future__ import annotations

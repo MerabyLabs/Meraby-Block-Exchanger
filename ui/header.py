@@ -71,14 +71,14 @@ class Header(ctk.CTkFrame):
 
         ctk.CTkLabel(
             title_block,
-            text="SE Block Exchanger",
+            text="Meraby Block Exchanger",
             font=TacticalTheme.FONT_TITLE,
             text_color=TacticalTheme.TEXT_WHITE,
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             title_block,
-            text="Convert blueprints without editing XML  ·  Meraby Labs",
+            text="Offline blueprint toolkit  ·  Meraby Labs",
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_GRAY,
         ).pack(anchor="w", pady=(2, 0))

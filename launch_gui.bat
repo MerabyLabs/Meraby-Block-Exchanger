@@ -1,9 +1,10 @@
 @echo off
-REM Space Engineers Block Exchanger - Standalone GUI Launcher
-REM Double-click this file to launch the tactical command center
+REM Meraby Block Exchanger (MBX) - Standalone GUI Launcher
+REM Double-click this file to launch the app
 
 echo ========================================
-echo SE BLOCK EXCHANGER - TACTICAL COMMAND CENTER
+echo Meraby Block Exchanger
+echo Offline blueprint toolkit
 echo ========================================
 echo.
 echo Launching standalone application...

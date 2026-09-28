@@ -1,4 +1,3 @@
 """
-SE Block Exchanger - UI Package
-Modern CustomTkinter-based tactical command interface
+Meraby Block Exchanger (MBX) UI package.
 """

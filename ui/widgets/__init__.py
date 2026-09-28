@@ -1,3 +1,3 @@
 """
-SE Block Exchanger - Custom Widget Components
+Meraby Block Exchanger (MBX) widget components.
 """
