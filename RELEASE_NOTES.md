@@ -10,6 +10,12 @@ Portable build: `Meraby_Block_Exchanger_v{semver}.exe`, with `Meraby_Block_Excha
 
 Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is also unchanged. Existing installs keep their settings and profiles.
 
+## v3.2.2 (2026-09-29)
+
+Rebuilt portable with Meraby Block Exchanger product chrome (window title, About/changelog titles). Same toolkit as 3.2.1. Rename from SE Tactical Command / SEBX branding.
+
+Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
+
 ## v3.2.1 (2026-08-29)
 
 Patch for the portable Windows build. **v3.2.0.exe crashes if you open it from a desktop shortcut** (or any launch whose working directory is not the folder that contains `data/`). Download this build instead.

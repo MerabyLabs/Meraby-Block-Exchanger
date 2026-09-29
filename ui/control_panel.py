@@ -308,7 +308,7 @@ class ControlPanel(ctk.CTkFrame):
         chip.value_label = value_label  # type: ignore[attr-defined]
         return chip
 
-    def _set_mode(self, mode: str):
+    def _set_mode(self, mode: str, notify: bool = True):
         self._reverse = mode == "heavy_to_light"
         if mode == "light_to_heavy":
             self.mode_lth_btn.configure(
@@ -336,7 +336,7 @@ class ControlPanel(ctk.CTkFrame):
             )
         self._refresh_cta()
         self._refresh_live_preview()
-        if self._on_mode_change:
+        if notify and self._on_mode_change:
             self._on_mode_change(mode)
 
     def _convert(self):

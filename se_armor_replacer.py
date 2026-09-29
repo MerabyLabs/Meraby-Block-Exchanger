@@ -406,6 +406,25 @@ def main() -> int:
         print(f"Error initializing replacer: {exc}", file=sys.stderr)
         return 1
 
+    if args.reverse:
+        one_way = [
+            name
+            for name in replacer.enabled_categories
+            if not MappingRegistry.category_is_reversible(replacer.registry.get(name))
+        ]
+        if one_way:
+            print(
+                "Note: one-way categories were not reversed "
+                f"(multiple sources share a target): {', '.join(one_way)}",
+                file=sys.stderr,
+            )
+    else:
+        one_way = []
+
+    applied_categories = [
+        name for name in replacer.enabled_categories if name not in one_way
+    ]
+
     if args.list_categories:
         print("Available categories:")
         for name, description, pair_count in replacer.list_categories():
@@ -419,7 +438,7 @@ def main() -> int:
         for source, target in sorted(replacer.mapping.items()):
             print(f"  {source:50} -> {target}")
         print(f"\nTotal active pairs: {len(replacer.mapping)}")
-        print(f"Categories: {', '.join(replacer.enabled_categories)}")
+        print(f"Categories: {', '.join(applied_categories)}")
         return 0
 
     if not args.input:
@@ -449,7 +468,7 @@ def main() -> int:
             print(f"\nSuccess! [{mode}]")
             print(f"Blocks scanned: {blocks_scanned}")
             print(f"Replacements made: {replacements}")
-            print(f"Categories: {', '.join(replacer.enabled_categories)}")
+            print(f"Categories: {', '.join(applied_categories)}")
 
         if replacements == 0:
             print("\nNo matching mapped blocks were found for the selected categories.")

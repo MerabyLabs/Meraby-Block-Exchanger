@@ -2,7 +2,7 @@
 
 ## Offline blueprint toolkit
 
-**Version 3.2.1 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
+**Version 3.2.2 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
 
 [![CI](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml)
 [![Release](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml)
@@ -191,10 +191,10 @@ Tagged Windows builds embed README, LICENSE, RELEASE_NOTES, `profiles/`, `data/`
 ## Verify a download
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\Meraby_Block_Exchanger_v3.2.1.exe
+Get-FileHash -Algorithm SHA256 .\Meraby_Block_Exchanger_v3.2.2.exe
 ```
 
-Compare the hash to `Meraby_Block_Exchanger_v3.2.1.exe.sha256` or to the matching line in `SHA256SUMS.txt` from the **same** release. Both name the exe `Meraby_Block_Exchanger_v<version>.exe`. If a release asset still uses the previous exe name, hash that file against the checksum published beside it.
+Compare the hash to `Meraby_Block_Exchanger_v3.2.2.exe.sha256` or to the matching line in `SHA256SUMS.txt` from the **same** release. Both name the exe `Meraby_Block_Exchanger_v<version>.exe`. If a release asset still uses the previous exe name, hash that file against the checksum published beside it.
 
 ---
 

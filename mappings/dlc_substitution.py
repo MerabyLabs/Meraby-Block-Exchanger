@@ -154,7 +154,10 @@ DLC_TO_BASE_PAIRS = {
 def get_category() -> MappingCategory:
     return MappingCategory(
         name="dlc_substitution",
-        description="Replaces paid DLC blocks with standard, base-game (Vanilla) alternatives.",
+        description=(
+            "Replaces DLC subtype IDs in this table with base-game alternatives. "
+            "One-way: several DLC IDs share one vanilla target, so reverse mode skips this category."
+        ),
         pairs=DLC_TO_BASE_PAIRS,
         grid_sizes=("Large", "Small"),
         enabled_by_default=False,

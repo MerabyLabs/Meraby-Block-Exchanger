@@ -40,6 +40,9 @@ jobs:
       - name: Converter tests
         run: pytest -q
 
+      - name: Test
+        run: pytest -q tests
+
       - name: Import smoke check
         run: |
           python -c "from version import __version__; import se_armor_replacer, blueprint_converter, gui_standalone; print(__version__)"
