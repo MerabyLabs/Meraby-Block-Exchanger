@@ -12,6 +12,8 @@ import customtkinter as ctk
 from ui.theme import TacticalTheme
 from blueprint_scanner import BlueprintInfo
 from mappings import build_registry
+from mappings.prototech import get_survival_sanity_mapping
+from mappings.registry import authored_exchange_targets
 
 
 class SelectiveExchangePanel(ctk.CTkFrame):
@@ -38,7 +40,13 @@ class SelectiveExchangePanel(ctk.CTkFrame):
         self.on_selective_convert = on_selective_convert
         self.current_blueprint: Optional[BlueprintInfo] = None
         self.registry = build_registry(include_builtin=True)
+        # Pre-check only the default forward map (armor). Suggestions below
+        # use every authored pair, including one-way DLC and survival aliases.
         self.default_mapping = self.registry.build_mapping(reverse=False)
+        self._authored_targets = authored_exchange_targets(
+            self.registry,
+            extra_one_way=get_survival_sanity_mapping(),
+        )
 
         self._row_vars: Dict[str, ctk.BooleanVar] = {}
         self._row_targets: Dict[str, ctk.StringVar] = {}
@@ -244,45 +252,10 @@ class SelectiveExchangePanel(ctk.CTkFrame):
         return colors.get(cat, TacticalTheme.TEXT_GRAY)
 
     def _get_smart_suggestions(self, subtype: str) -> List[str]:
-        suggestions = []
-        default_target = self.default_mapping.get(subtype)
-        if default_target and default_target != subtype:
-            suggestions.append(default_target)
-
-        # Light <-> Heavy suggestions
-        if "Heavy" in subtype:
-            light_equiv = subtype.replace("HeavyBlock", "Block").replace("Heavy", "")
-            if light_equiv not in suggestions and light_equiv != subtype:
-                suggestions.append(light_equiv)
-        elif "Armor" in subtype and "Heavy" not in subtype:
-            heavy_equiv = subtype.replace("BlockArmor", "HeavyBlockArmor").replace("Armor", "HeavyArmor")
-            if heavy_equiv not in suggestions and heavy_equiv != subtype:
-                suggestions.append(heavy_equiv)
-
-        # DLC substitutions
-        if "Industrial" in subtype:
-            vanilla = subtype.replace("Industrial", "")
-            if vanilla not in suggestions:
-                suggestions.append(vanilla)
-        if "SciFi" in subtype:
-            vanilla = subtype.replace("SciFi", "")
-            if vanilla not in suggestions:
-                suggestions.append(vanilla)
-
-        # Prototech variants
-        if "Prototech" not in subtype:
-            if "Reactor" in subtype or "Generator" in subtype:
-                suggestions.append("LargePrototechReactor" if "Large" in subtype else "SmallPrototechReactor")
-            elif "Thrust" in subtype:
-                suggestions.append("LargeBlockLargePrototechThrust" if "Large" in subtype else "SmallBlockLargePrototechThrust")
-            elif "JumpDrive" in subtype:
-                suggestions.append("LargePrototechJumpDrive")
-            elif "Gyro" in subtype:
-                suggestions.append("LargePrototechGyro" if "Large" in subtype else "SmallPrototechGyro")
-
+        """Targets from authored tables only. Never synthesize a subtype ID."""
+        suggestions = list(self._authored_targets.get(subtype, []))
         if not suggestions:
             suggestions.append(subtype)
-
         return suggestions
 
     # ------------------------------------------------------------------
