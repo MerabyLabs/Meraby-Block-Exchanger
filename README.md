@@ -162,7 +162,7 @@ python se_armor_replacer.py --version
 - Any `.sbc` file is accepted. A folder prefers `bp.sbc`, then the first sorted `*.sbc`.
 - `--all-categories` is **built-in only** (armor, thrusters, weapons, functional, DLC substitution). Prototech and mod profiles stay opt-in so WeaponCore / Assertive Armaments cannot collide with vanilla mappings.
 - Default CLI conversion is light → heavy armor, **in place**, with a `.sbc.backup` unless `--no-backup`. Use `--dry-run` first.
-- After a write, leftover `bp.sbcB5` binary cache next to the file is removed when present.
+- After a write, leftover `bp.sbcB5` binary cache next to the file is removed. If that file stays locked, the operation fails instead of leaving a stale binary for the game to load.
 - Grid rescale (GUI) uses a 5:1 `Min` ratio; small → large truncates toward zero so negative coordinates are not shifted.
 
 ---
