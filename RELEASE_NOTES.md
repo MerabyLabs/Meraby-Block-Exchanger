@@ -10,6 +10,18 @@ Portable build: `Meraby_Block_Exchanger_v{semver}.exe`, with `Meraby_Block_Excha
 
 Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is also unchanged. Existing installs keep their settings and profiles.
 
+## v3.2.3 (2026-09-29)
+
+Conversion copies keep Space Engineers block identity. Only the mapped subtype text changes. `scale_grid_size` swaps a leading Large/Small prefix and leaves Large or Small later in the name alone. A locked `bp.sbcB5` fails closed (`BinaryCacheError`; the CLI exits non-zero) so a stale binary cache is not reported as a successful write.
+
+SE2 export writes an honesty label and `translation_status` `unverified_internal_placeholders`. Unmapped blocks pass through the original SE1 subtype. The export does not fabricate `VR3_Legacy_*` ids.
+
+File → Create desktop shortcut and `create_desktop_shortcut.ps1` prefer `Meraby_Block_Exchanger*.exe`. Matching for `SE_Tactical_Command*.exe` is dropped.
+
+Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is unchanged.
+
+Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
+
 ## v3.2.2 (2026-09-29)
 
 Rebuilt portable with Meraby Block Exchanger product chrome (window title, About/changelog titles). Same toolkit as 3.2.1. Rename from SE Tactical Command / SEBX branding.
