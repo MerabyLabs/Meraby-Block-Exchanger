@@ -412,9 +412,15 @@ class TestBinaryCacheLock(unittest.TestCase):
                     converter.create_converted_blueprint(source)
         self.assertEqual(calls["n"], 3)
         self.assertIn("stale binary", str(ctx.exception).lower())
+        self.assertIsInstance(ctx.exception, BinaryCacheError)
         dest = self.root / "HEAVYARMOR_Ship"
         self.assertTrue(dest.exists())
         self.assertTrue((dest / "bp.sbcB5").exists())
+        # Cache removal runs before the armor rewrite, so a lock does not
+        # leave a heavy-armor bp.sbc next to the stale binary the game loads.
+        copied = (dest / "bp.sbc").read_text(encoding="utf-8")
+        self.assertIn("LargeBlockArmorBlock", copied)
+        self.assertNotIn("LargeHeavyBlockArmorBlock", copied)
 
     def test_cli_returns_failure_when_binary_cache_is_locked(self):
         source = write_blueprint_dir(

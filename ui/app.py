@@ -18,6 +18,7 @@ from tkinter import filedialog, messagebox
 from app_settings import AppSettings, SettingsStore
 from blueprint_analytics import BlueprintAnalyticsEngine, compute_se2_readiness
 from blueprint_converter import BlueprintConverter
+from blueprint_mod_warning import warning_for_blueprint_file
 from blueprint_scanner import BlueprintInfo, BlueprintScanner
 from mapping_profiles import ProfileManager
 from mappings import build_registry
@@ -705,11 +706,14 @@ class TacticalCommandCenter(ctk.CTk):
         )
         category_text = ", ".join(category_label(name) for name in self.enabled_categories)
 
+        mod_warning = self._armor_mod_warning(bp.path)
+        warning_block = f"\n\n{mod_warning}" if mod_warning else ""
         confirm = messagebox.askyesno(
             "Create a converted copy?",
             f"Create a new copy of '{bp.display_name}' with {count} block(s) converted to {target}?\n\n"
             f"Included: {category_text}\n\n"
-            "The original blueprint is not changed. Undo removes the new copy.",
+            "The original blueprint is not changed. Undo removes the new copy."
+            f"{warning_block}",
         )
         if not confirm:
             return
@@ -742,10 +746,20 @@ class TacticalCommandCenter(ctk.CTk):
             preview_file = dest_path / "blueprint.json"
         if preview_file.exists():
             self.preview_panel.load_xml(preview_file, f"Converted: {dest_path.name}")
-        self.toasts.toast(
-            f"Created {dest_path.name} with {converted} block(s) converted.",
-            level="success",
-        )
+        mod_warning = self.converter.last_mod_block_warning
+        if mod_warning:
+            messagebox.showwarning("Mods may hide blocks", mod_warning)
+            self.toasts.toast(
+                "Converted copy kept mod or unknown blocks. "
+                "Space Engineers may hide them if the mods are not loaded.",
+                level="warning",
+                duration=9000,
+            )
+        else:
+            self.toasts.toast(
+                f"Created {dest_path.name} with {converted} block(s) converted.",
+                level="success",
+            )
         self._pending_select_name = dest_path.name
         self.load_blueprints_async()
 
@@ -754,6 +768,8 @@ class TacticalCommandCenter(ctk.CTk):
         self._update_convert_state()
         self.footer.set_status("Error", TacticalTheme.RED_PRIMARY)
         self.toasts.toast(f"Conversion failed: {error_msg}", level="error", duration=5000)
+        if "binary cache" in error_msg.lower():
+            messagebox.showerror("Stale blueprint cache", error_msg)
 
     def vanillafy_blueprint(self):
         if not self.selected_blueprint:
@@ -1193,11 +1209,18 @@ class TacticalCommandCenter(ctk.CTk):
             self.toasts.toast("Select one or more blueprints first (Ctrl+click).", level="warning")
             return
 
+        mod_previews = []
+        for bp in selected_bps:
+            text = self._armor_mod_warning(bp.path)
+            if text:
+                mod_previews.append(f"{bp.display_name}\n{text}")
+        warning_block = ("\n\n" + "\n\n".join(mod_previews)) if mod_previews else ""
         confirm = messagebox.askyesno(
             "Convert the selected ships?",
             f"Create converted copies of {len(selected_bps)} blueprint(s)?\n\n"
             f"Included: {', '.join(category_label(name) for name in self.enabled_categories)}\n\n"
-            "Originals stay untouched.",
+            "Originals stay untouched."
+            f"{warning_block}",
         )
         if not confirm:
             return
@@ -1212,6 +1235,7 @@ class TacticalCommandCenter(ctk.CTk):
             total_converted = 0
             errors = []
             created: List[Path] = []
+            mod_warnings: List[str] = []
 
             for index, bp in enumerate(selected_bps):
                 self._ui(
@@ -1232,16 +1256,36 @@ class TacticalCommandCenter(ctk.CTk):
                     created.append(dest)
                     total_scanned += scanned
                     total_converted += converted
+                    if converter.last_mod_block_warning:
+                        mod_warnings.append(
+                            f"{bp.display_name}\n{converter.last_mod_block_warning}"
+                        )
                 except Exception as exc:
                     errors.append(f"{bp.display_name}: {exc}")
 
+            finished_warnings = list(mod_warnings)
             self._ui(
-                lambda: self._on_batch_complete(total, total_scanned, total_converted, errors, created),
+                lambda: self._on_batch_complete(
+                    total,
+                    total_scanned,
+                    total_converted,
+                    errors,
+                    created,
+                    finished_warnings,
+                ),
             )
 
         threading.Thread(target=batch_task, daemon=True).start()
 
-    def _on_batch_complete(self, count, scanned, converted, errors, created_paths: List[Path]):
+    def _on_batch_complete(
+        self,
+        count,
+        scanned,
+        converted,
+        errors,
+        created_paths: List[Path],
+        mod_warnings: Optional[List[str]] = None,
+    ):
         self.control_panel.progress.stop()
         self._converted_count += converted
         self._undo_stack.extend(created_paths)
@@ -1249,6 +1293,12 @@ class TacticalCommandCenter(ctk.CTk):
         self.footer.set_converted(self._converted_count)
         self.footer.set_status("Batch complete")
         self._update_convert_state()
+
+        if mod_warnings:
+            messagebox.showwarning(
+                "Mods may hide blocks",
+                "\n\n".join(mod_warnings),
+            )
 
         message = f"Created copies for {count} blueprint(s): {converted} block(s) changed."
         if errors:
@@ -1374,6 +1424,18 @@ class TacticalCommandCenter(ctk.CTk):
             return notes.read_text(encoding="utf-8")
         except Exception as exc:
             return f"Could not load release notes: {exc}"
+
+    def _armor_mod_warning(self, blueprint_dir: Path) -> str:
+        """Loud mod-block warning for an armor conversion, or empty."""
+        if not any(str(name).lower() == "armor" for name in self.enabled_categories):
+            return ""
+        bp_file = Path(blueprint_dir) / "bp.sbc"
+        if not bp_file.exists():
+            return ""
+        try:
+            return warning_for_blueprint_file(bp_file)
+        except Exception:
+            return ""
 
     def _show_error(self, message: str):
         self.footer.set_status("Error", TacticalTheme.RED_PRIMARY)

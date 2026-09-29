@@ -89,6 +89,8 @@ class ArmorBlockReplacer:
         self.replacements_made = 0
         self.blocks_scanned = 0
         self.change_log: List[Tuple[str, str]] = []
+        self.mod_subtype_counts: Dict[str, int] = {}
+        self.mod_block_warning = ""
 
         self.registry = registry if registry else build_registry(include_builtin=True)
         self.profile_manager = ProfileManager(profile_dir or bundled_profiles_dir())
@@ -269,6 +271,8 @@ class ArmorBlockReplacer:
         self.blocks_scanned = 0
         self.replacements_made = 0
         self.change_log = []
+        self.mod_subtype_counts = {}
+        self.mod_block_warning = ""
 
         try:
             tree = safe_xml.parse(input_file)
@@ -281,6 +285,7 @@ class ArmorBlockReplacer:
             custom_mapping=custom_mapping,
             selected_subtypes=selected_subtypes,
         )
+        self._record_mod_block_warning(tree.getroot())
         if dry_run:
             self.log(f"[INFO] Dry run complete: {self.replacements_made} blocks would change.")
             return self.blocks_scanned, self.replacements_made
@@ -303,6 +308,18 @@ class ArmorBlockReplacer:
             self.log(f"[INFO] Removed binary cache file: {binary_file}")
 
         return self.blocks_scanned, self.replacements_made
+
+    def _record_mod_block_warning(self, root: Optional[ET.Element]) -> None:
+        """Remember mod/unknown subtypes. Does not rewrite them."""
+        from blueprint_mod_warning import format_mod_block_warning, unresolved_mod_counts
+
+        if root is None:
+            self.mod_subtype_counts = {}
+            self.mod_block_warning = ""
+            return
+        counts = unresolved_mod_counts(root)
+        self.mod_subtype_counts = counts
+        self.mod_block_warning = format_mod_block_warning(counts)
 
     def get_replacement_summary(self) -> str:
         normalized = [name.lower() for name in self.enabled_categories]
@@ -331,6 +348,17 @@ class ArmorBlockReplacer:
         for change, count in sorted(counts.items()):
             lines.append(f"  {change}  (x{count})")
         return "\n".join(lines)
+
+
+def _emit_armor_mod_warning(replacer: ArmorBlockReplacer) -> None:
+    """Print the mod-block warning on stdout and stderr. Armor conversions only."""
+    from blueprint_mod_warning import armor_category_enabled
+
+    warning = replacer.mod_block_warning
+    if not warning or not armor_category_enabled(replacer.enabled_categories):
+        return
+    print("\n" + warning)
+    print("\n" + warning, file=sys.stderr)
 
 
 def _split_categories(raw: Optional[str], use_all: bool) -> Optional[List[str]]:
@@ -472,6 +500,7 @@ def main() -> int:
 
         if replacements == 0:
             print("\nNo matching mapped blocks were found for the selected categories.")
+        _emit_armor_mod_warning(replacer)
         return 0
     except FileNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
