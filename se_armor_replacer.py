@@ -24,6 +24,18 @@ class BinaryCacheError(OSError):
     """The blueprint binary cache could not be removed."""
 
 
+# Shown after a successful write. Distinguishes a cache we must delete at convert
+# time from a bp.sbcB5 Space Engineers writes later when the ship is spawned.
+BINARY_CACHE_PLAYER_NOTE = (
+    "Space Engineers loads bp.sbcB5 instead of bp.sbc when that cache is already present. "
+    "This convert removes bp.sbcB5 before writing. If that file is locked, the convert fails "
+    "instead of reporting success. "
+    "A bp.sbcB5 that appears later, when you spawn the ship, is Space Engineers saving this blueprint. "
+    "That bake is not a cache the converter left behind. "
+    "If you overwrite an existing blueprint folder, delete its old bp.sbcB5 first or the game keeps the old ship."
+)
+
+
 def remove_blueprint_binary_cache(
     binary_file: Path,
     *,
@@ -89,6 +101,9 @@ class ArmorBlockReplacer:
         self.replacements_made = 0
         self.blocks_scanned = 0
         self.change_log: List[Tuple[str, str]] = []
+        self.mod_subtype_counts: Dict[str, int] = {}
+        self.mod_block_warning = ""
+        self.binary_cache_removed = False
 
         self.registry = registry if registry else build_registry(include_builtin=True)
         self.profile_manager = ProfileManager(profile_dir or bundled_profiles_dir())
@@ -269,6 +284,9 @@ class ArmorBlockReplacer:
         self.blocks_scanned = 0
         self.replacements_made = 0
         self.change_log = []
+        self.mod_subtype_counts = {}
+        self.mod_block_warning = ""
+        self.binary_cache_removed = False
 
         try:
             tree = safe_xml.parse(input_file)
@@ -281,6 +299,7 @@ class ArmorBlockReplacer:
             custom_mapping=custom_mapping,
             selected_subtypes=selected_subtypes,
         )
+        self._record_mod_block_warning(tree.getroot())
         if dry_run:
             self.log(f"[INFO] Dry run complete: {self.replacements_made} blocks would change.")
             return self.blocks_scanned, self.replacements_made
@@ -294,15 +313,30 @@ class ArmorBlockReplacer:
         else:
             output_file = input_file
 
-        safe_xml.safe_write(tree, output_file)
-        self.log(f"[INFO] Output written: {output_file}")
-
+        # Delete the binary cache before the XML write. A lock must fail closed:
+        # the game would ignore a converted bp.sbc sitting next to a stale bp.sbcB5.
         binary_file = output_file.with_name(output_file.name + "B5")
         if binary_file.exists():
             remove_blueprint_binary_cache(binary_file)
+            self.binary_cache_removed = True
             self.log(f"[INFO] Removed binary cache file: {binary_file}")
 
+        safe_xml.safe_write(tree, output_file)
+        self.log(f"[INFO] Output written: {output_file}")
+
         return self.blocks_scanned, self.replacements_made
+
+    def _record_mod_block_warning(self, root: Optional[ET.Element]) -> None:
+        """Remember mod/unknown subtypes. Does not rewrite them."""
+        from blueprint_mod_warning import format_mod_block_warning, unresolved_mod_counts
+
+        if root is None:
+            self.mod_subtype_counts = {}
+            self.mod_block_warning = ""
+            return
+        counts = unresolved_mod_counts(root)
+        self.mod_subtype_counts = counts
+        self.mod_block_warning = format_mod_block_warning(counts)
 
     def get_replacement_summary(self) -> str:
         normalized = [name.lower() for name in self.enabled_categories]
@@ -331,6 +365,49 @@ class ArmorBlockReplacer:
         for change, count in sorted(counts.items()):
             lines.append(f"  {change}  (x{count})")
         return "\n".join(lines)
+
+
+def _stage_for_spawn_cli(args: argparse.Namespace) -> int:
+    """Staging SOP: copy for spawn, delete bp.sbcB5, gate on non-vanilla subtypes."""
+    from blueprint_converter import stage_blueprint_for_spawn
+    from blueprint_mod_warning import QA_GATE_EXIT_CODE, QA_GATE_LINE
+
+    if not args.input:
+        print("Error: --stage-for-spawn requires a blueprint folder or bp.sbc.", file=sys.stderr)
+        return 1
+    try:
+        dest, warning, removed = stage_blueprint_for_spawn(Path(args.input), Path(args.stage_for_spawn))
+    except BinaryCacheError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Staged for spawn: {dest}")
+    if removed:
+        print("Deleted bp.sbcB5 before spawn.")
+    else:
+        print("No bp.sbcB5 was present. Spawn from bp.sbc.")
+    print(BINARY_CACHE_PLAYER_NOTE)
+    if not warning:
+        return 0
+    print("\n" + warning)
+    print("\n" + warning, file=sys.stderr)
+    print(QA_GATE_LINE)
+    print(QA_GATE_LINE, file=sys.stderr)
+    return QA_GATE_EXIT_CODE
+
+
+def _emit_armor_mod_warning(replacer: ArmorBlockReplacer) -> None:
+    """Print the mod-block warning on stdout and stderr. Armor conversions only."""
+    from blueprint_mod_warning import armor_category_enabled
+
+    warning = replacer.mod_block_warning
+    if not warning or not armor_category_enabled(replacer.enabled_categories):
+        return
+    print("\n" + warning)
+    print("\n" + warning, file=sys.stderr)
 
 
 def _split_categories(raw: Optional[str], use_all: bool) -> Optional[List[str]]:
@@ -385,12 +462,23 @@ def main() -> int:
         help="Disable profile auto-loading",
     )
     parser.add_argument(
+        "--stage-for-spawn",
+        metavar="DEST",
+        help=(
+            "Copy the blueprint folder to DEST for in-game spawn and delete bp.sbcB5. "
+            "Does not convert blocks. Exits 2 when non-vanilla subtypes need mods at spawn."
+        ),
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"Meraby Block Exchanger {__version__}",
     )
 
     args = parser.parse_args()
+
+    if args.stage_for_spawn:
+        return _stage_for_spawn_cli(args)
 
     categories = _split_categories(args.categories, args.all_categories)
 
@@ -469,9 +557,12 @@ def main() -> int:
             print(f"Blocks scanned: {blocks_scanned}")
             print(f"Replacements made: {replacements}")
             print(f"Categories: {', '.join(applied_categories)}")
+            print("\n" + BINARY_CACHE_PLAYER_NOTE)
+            print("\n" + BINARY_CACHE_PLAYER_NOTE, file=sys.stderr)
 
         if replacements == 0:
             print("\nNo matching mapped blocks were found for the selected categories.")
+        _emit_armor_mod_warning(replacer)
         return 0
     except FileNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
