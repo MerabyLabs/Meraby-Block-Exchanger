@@ -170,5 +170,13 @@ def test_se2_export_labels_placeholders(tmp_path: Path):
     assert payload["translation_status"] == "unverified_internal_placeholders"
     assert "not Keen" in payload["note"]
     subtypes = {block["subtype"] for grid in payload["grids"] for block in grid["blocks"]}
-    assert subtypes
-    assert all(name.startswith("VR3_") for name in subtypes)
+    # Unmapped SE1 ids pass through. Only an existing table pair becomes a VR3 placeholder.
+    assert "LargeAssembler" in subtypes
+    assert "LargeIndustrialAssembler" in subtypes
+    assert "VR3_Large_Heavy_Armor_Cube" in subtypes
+    assert subtypes == {
+        "LargeAssembler",
+        "LargeIndustrialAssembler",
+        "VR3_Large_Heavy_Armor_Cube",
+    }
+    assert not any(name.startswith("VR3_Legacy_") for name in subtypes)
