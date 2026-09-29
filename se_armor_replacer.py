@@ -24,11 +24,15 @@ class BinaryCacheError(OSError):
     """The blueprint binary cache could not be removed."""
 
 
-# Shown after a successful write. A leftover bp.sbcB5 makes the game ignore the XML.
+# Shown after a successful write. Distinguishes a cache we must delete at convert
+# time from a bp.sbcB5 Space Engineers writes later when the ship is spawned.
 BINARY_CACHE_PLAYER_NOTE = (
-    "Space Engineers loads bp.sbcB5 instead of bp.sbc when that cache is present. "
-    "This write removes it so the game reads the converted XML. "
-    "If you overwrite an existing blueprint folder, delete its bp.sbcB5 or the game keeps the old ship."
+    "Space Engineers loads bp.sbcB5 instead of bp.sbc when that cache is already present. "
+    "This convert removes bp.sbcB5 before writing. If that file is locked, the convert fails "
+    "instead of reporting success. "
+    "A bp.sbcB5 that appears later, when you spawn the ship, is Space Engineers saving this blueprint. "
+    "That bake is not a cache the converter left behind. "
+    "If you overwrite an existing blueprint folder, delete its old bp.sbcB5 first or the game keeps the old ship."
 )
 
 

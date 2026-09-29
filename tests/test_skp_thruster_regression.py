@@ -131,6 +131,7 @@ def test_gui_armor_light_to_heavy_preserves_skp_thrusters(tmp_path: Path):
     assert converted == 40
     assert not (dest / "bp.sbcB5").exists()
     assert (source / "bp.sbcB5").exists()
+    assert converter.removed_binary_cache is True
     text = (dest / "bp.sbc").read_text(encoding="utf-8")
     _assert_thrusters_and_armor(source_blocks, _blocks(dest / "bp.sbc"), text)
     warning = converter.last_mod_block_warning

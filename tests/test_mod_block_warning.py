@@ -17,7 +17,7 @@ from blueprint_mod_warning import (
     is_unresolved_mod_subtype,
     known_vanilla_subtypes,
 )
-from se_armor_replacer import ArmorBlockReplacer, BinaryCacheError, main
+from se_armor_replacer import BINARY_CACHE_PLAYER_NOTE, ArmorBlockReplacer, BinaryCacheError, main
 
 MOD_THRUST = (
     {"subtype": "STR350_Flat", "tag": "MyObjectBuilder_Thrust", "xsi_type": "MyObjectBuilder_Thrust"},
@@ -184,6 +184,8 @@ def test_cli_armor_convert_prints_mod_warning_and_keeps_blocks(tmp_path: Path):
         assert MOD_BLOCK_WARNING_DETAIL in stream
         assert "STR350_Flat  x1" in stream
         assert "ARYLNX_SCIRCOCCO_Epstein_Drive  x1" in stream
+        assert "when you spawn the ship" in stream
+        assert BINARY_CACHE_PLAYER_NOTE in stream
     xml = (source / "bp.sbc").read_text(encoding="utf-8")
     assert "STR350_Flat" in xml
     assert "ARYLNX_SCIRCOCCO_Epstein_Drive" in xml
@@ -220,6 +222,46 @@ def test_cli_thruster_category_does_not_emit_armor_mod_warning(tmp_path: Path):
     assert "STR350_Flat" in xml
     assert "LargeBlockArmorBlock" in xml
     assert "LargeHeavyBlockArmorBlock" not in xml
+
+
+def test_converted_folder_omits_b5_and_keeps_reversed_sbc(tmp_path: Path):
+    """Avery: convert output is bp.sbc plus siblings such as bp_reversed.sbc, and no bp.sbcB5.
+
+    A bp.sbcB5 written later, when Space Engineers spawns the ship, is a game bake.
+    The converter must not leave one, and must not remap mod or vanilla thrusters.
+    """
+    source = write_blueprint_dir(
+        tmp_path,
+        "SKP burn and turn",
+        [
+            "LargeBlockArmorBlock",
+            _thrust("LargeBlockSmallThrust"),
+            _thrust("LargeBlockLargeThrust"),
+            *MOD_THRUST,
+        ],
+        grid_size="Large",
+        extra_files=["bp.sbcB5", "bp_reversed.sbc"],
+    )
+    (source / "bp_reversed.sbc").write_text("<reversed/>", encoding="utf-8")
+    converter = BlueprintConverter(include_profiles=False)
+    dest, _scanned, converted = converter.create_heavy_armor_blueprint(source)
+
+    assert converted == 1
+    assert converter.removed_binary_cache is True
+    names = sorted(path.name for path in dest.iterdir())
+    assert "bp.sbcB5" not in names
+    assert "bp.sbc" in names
+    assert "bp_reversed.sbc" in names
+    assert (dest / "bp_reversed.sbc").read_text(encoding="utf-8") == "<reversed/>"
+    xml = (dest / "bp.sbc").read_text(encoding="utf-8")
+    assert _counts(xml, "LargeHeavyBlockArmorBlock") == 1
+    assert _counts(xml, "LargeBlockSmallThrust") == 1
+    assert _counts(xml, "LargeBlockLargeThrust") == 1
+    assert _counts(xml, "STR350_Flat") == 1
+    assert _counts(xml, "ARYLNX_SCIRCOCCO_Epstein_Drive") == 1
+    assert "STR350_Flat  x1" in converter.last_mod_block_warning
+    assert "LargeBlockSmallThrust" not in converter.last_mod_block_warning
+    assert "when you spawn the ship" in BINARY_CACHE_PLAYER_NOTE
 
 
 def test_converted_copy_surfaces_binary_cache_error(tmp_path: Path):
