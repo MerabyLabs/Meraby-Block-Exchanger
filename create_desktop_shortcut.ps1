@@ -11,12 +11,6 @@ if (-not $TargetPath) {
     $exe = Get-ChildItem -Path $TargetFolder -Filter "Meraby_Block_Exchanger*.exe" -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
-    if (-not $exe) {
-        # Builds published before the MBX rename.
-        $exe = Get-ChildItem -Path $TargetFolder -Filter "SE_Tactical_Command*.exe" -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-    }
     if ($exe) {
         $TargetPath = $exe.FullName
     }
