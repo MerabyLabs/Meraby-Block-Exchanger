@@ -169,14 +169,21 @@ def test_se2_export_labels_placeholders(tmp_path: Path):
     payload = json.loads((out_dir / "blueprint.json").read_text(encoding="utf-8"))
     assert payload["translation_status"] == "unverified_internal_placeholders"
     assert "not Keen" in payload["note"]
-    subtypes = {block["subtype"] for grid in payload["grids"] for block in grid["blocks"]}
-    # Unmapped SE1 ids pass through. Only an existing table pair becomes a VR3 placeholder.
-    assert "LargeAssembler" in subtypes
-    assert "LargeIndustrialAssembler" in subtypes
-    assert "VR3_Large_Heavy_Armor_Cube" in subtypes
-    assert subtypes == {
-        "LargeAssembler",
-        "LargeIndustrialAssembler",
-        "VR3_Large_Heavy_Armor_Cube",
-    }
-    assert not any(name.startswith("VR3_Legacy_") for name in subtypes)
+    blocks = [block for grid in payload["grids"] for block in grid["blocks"]]
+    by_original = {block["original_se1_subtype"]: block for block in blocks}
+
+    # Unmapped SE1 ids stay themselves and are marked passthrough.
+    # A VR3_ name is allowed only for a pair already in the translation table.
+    for original in ("LargeAssembler", "LargeIndustrialAssembler"):
+        block = by_original[original]
+        assert block["subtype"] == original
+        assert block["passthrough"] is True
+        assert block["se2_mapped"] is False
+        assert not str(block["subtype"]).startswith("VR3_")
+
+    armor = by_original["LargeHeavyBlockArmorBlock"]
+    assert armor["subtype"] == "VR3_Large_Heavy_Armor_Cube"
+    assert armor["passthrough"] is False
+    assert armor["se2_mapped"] is True
+
+    assert not any(str(block["subtype"]).startswith("VR3_Legacy_") for block in blocks)
