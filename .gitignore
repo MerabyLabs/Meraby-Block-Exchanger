@@ -70,8 +70,11 @@ nul
 # Local-only development materials (never publish)
 secrets/
 
-# Test suite is not part of the public product tree
+# Local-only checks stay unpublished. Converter and migration tests are in CI.
 /test_*.py
+!/test_converter.py
+!/test_engine_compat.py
 /test_bp.sbc
 /blueprint_fixtures.py
+!/blueprint_fixtures.py
 /verify_mappings.py
