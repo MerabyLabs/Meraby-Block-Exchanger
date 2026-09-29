@@ -24,6 +24,14 @@ class BinaryCacheError(OSError):
     """The blueprint binary cache could not be removed."""
 
 
+# Shown after a successful write. A leftover bp.sbcB5 makes the game ignore the XML.
+BINARY_CACHE_PLAYER_NOTE = (
+    "Space Engineers loads bp.sbcB5 instead of bp.sbc when that cache is present. "
+    "This write removes it so the game reads the converted XML. "
+    "If you overwrite an existing blueprint folder, delete its bp.sbcB5 or the game keeps the old ship."
+)
+
+
 def remove_blueprint_binary_cache(
     binary_file: Path,
     *,
@@ -91,6 +99,7 @@ class ArmorBlockReplacer:
         self.change_log: List[Tuple[str, str]] = []
         self.mod_subtype_counts: Dict[str, int] = {}
         self.mod_block_warning = ""
+        self.binary_cache_removed = False
 
         self.registry = registry if registry else build_registry(include_builtin=True)
         self.profile_manager = ProfileManager(profile_dir or bundled_profiles_dir())
@@ -273,6 +282,7 @@ class ArmorBlockReplacer:
         self.change_log = []
         self.mod_subtype_counts = {}
         self.mod_block_warning = ""
+        self.binary_cache_removed = False
 
         try:
             tree = safe_xml.parse(input_file)
@@ -299,13 +309,16 @@ class ArmorBlockReplacer:
         else:
             output_file = input_file
 
-        safe_xml.safe_write(tree, output_file)
-        self.log(f"[INFO] Output written: {output_file}")
-
+        # Delete the binary cache before the XML write. A lock must fail closed:
+        # the game would ignore a converted bp.sbc sitting next to a stale bp.sbcB5.
         binary_file = output_file.with_name(output_file.name + "B5")
         if binary_file.exists():
             remove_blueprint_binary_cache(binary_file)
+            self.binary_cache_removed = True
             self.log(f"[INFO] Removed binary cache file: {binary_file}")
+
+        safe_xml.safe_write(tree, output_file)
+        self.log(f"[INFO] Output written: {output_file}")
 
         return self.blocks_scanned, self.replacements_made
 
@@ -497,6 +510,8 @@ def main() -> int:
             print(f"Blocks scanned: {blocks_scanned}")
             print(f"Replacements made: {replacements}")
             print(f"Categories: {', '.join(applied_categories)}")
+            print("\n" + BINARY_CACHE_PLAYER_NOTE)
+            print("\n" + BINARY_CACHE_PLAYER_NOTE, file=sys.stderr)
 
         if replacements == 0:
             print("\nNo matching mapped blocks were found for the selected categories.")

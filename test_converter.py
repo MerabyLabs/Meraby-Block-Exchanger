@@ -396,6 +396,9 @@ class TestBinaryCacheLock(unittest.TestCase):
         self.assertEqual(calls["n"], 3)
         self.assertIn("stale binary", str(ctx.exception).lower())
         self.assertTrue((source / "bp.sbcB5").exists())
+        xml = (source / "bp.sbc").read_text(encoding="utf-8")
+        self.assertIn("LargeBlockArmorBlock", xml)
+        self.assertNotIn("LargeHeavyBlockArmorBlock", xml)
 
     def test_copy_fails_when_destination_binary_cache_is_locked(self):
         source = write_blueprint_dir(
@@ -414,13 +417,13 @@ class TestBinaryCacheLock(unittest.TestCase):
         self.assertIn("stale binary", str(ctx.exception).lower())
         self.assertIsInstance(ctx.exception, BinaryCacheError)
         dest = self.root / "HEAVYARMOR_Ship"
-        self.assertTrue(dest.exists())
-        self.assertTrue((dest / "bp.sbcB5").exists())
-        # Cache removal runs before the armor rewrite, so a lock does not
-        # leave a heavy-armor bp.sbc next to the stale binary the game loads.
-        copied = (dest / "bp.sbc").read_text(encoding="utf-8")
-        self.assertIn("LargeBlockArmorBlock", copied)
-        self.assertNotIn("LargeHeavyBlockArmorBlock", copied)
+        # The half-written folder is removed so the game cannot load a
+        # HEAVYARMOR_ name from the stale binary cache.
+        self.assertFalse(dest.exists())
+        self.assertTrue((source / "bp.sbcB5").exists())
+        original = (source / "bp.sbc").read_text(encoding="utf-8")
+        self.assertIn("LargeBlockArmorBlock", original)
+        self.assertNotIn("LargeHeavyBlockArmorBlock", original)
 
     def test_cli_returns_failure_when_binary_cache_is_locked(self):
         source = write_blueprint_dir(
@@ -442,6 +445,9 @@ class TestBinaryCacheLock(unittest.TestCase):
         self.assertIn("binary cache", message)
         self.assertIn("stale binary", message)
         self.assertNotIn("success", message)
+        xml = (source / "bp.sbc").read_text(encoding="utf-8")
+        self.assertIn("LargeBlockArmorBlock", xml)
+        self.assertNotIn("LargeHeavyBlockArmorBlock", xml)
 
 
 if __name__ == "__main__":

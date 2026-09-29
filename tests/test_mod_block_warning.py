@@ -243,11 +243,12 @@ def test_converted_copy_surfaces_binary_cache_error(tmp_path: Path):
                 converter.create_converted_blueprint(source)
 
     dest = tmp_path / "HEAVYARMOR_Ship"
-    assert (dest / "bp.sbcB5").exists()
-    xml = (dest / "bp.sbc").read_text(encoding="utf-8")
+    assert not dest.exists()
+    xml = (source / "bp.sbc").read_text(encoding="utf-8")
     assert "LargeBlockArmorBlock" in xml
     assert "LargeHeavyBlockArmorBlock" not in xml
     assert "LargeBlockSmallThrust" in xml
+    assert (source / "bp.sbcB5").exists()
 
 
 def test_dry_run_still_warns_without_writing(tmp_path: Path):

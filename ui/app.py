@@ -24,7 +24,7 @@ from mapping_profiles import ProfileManager
 from mappings import build_registry
 from mappings.registry import MappingValidationError, coerce_mergeable_categories
 import safe_xml
-from se_armor_replacer import ArmorBlockReplacer
+from se_armor_replacer import ArmorBlockReplacer, BINARY_CACHE_PLAYER_NOTE
 from subgrid_engine import GridMatrixVisualizer, SubgridHierarchyParser
 from ui.blueprint_panel import BlueprintPanel
 from ui.control_panel import ControlPanel
@@ -712,7 +712,8 @@ class TacticalCommandCenter(ctk.CTk):
             "Create a converted copy?",
             f"Create a new copy of '{bp.display_name}' with {count} block(s) converted to {target}?\n\n"
             f"Included: {category_text}\n\n"
-            "The original blueprint is not changed. Undo removes the new copy."
+            "The original blueprint is not changed. Undo removes the new copy.\n\n"
+            f"{BINARY_CACHE_PLAYER_NOTE}"
             f"{warning_block}",
         )
         if not confirm:
@@ -747,8 +748,9 @@ class TacticalCommandCenter(ctk.CTk):
         if preview_file.exists():
             self.preview_panel.load_xml(preview_file, f"Converted: {dest_path.name}")
         mod_warning = self.converter.last_mod_block_warning
+        spawn_note = mod_warning + "\n\n" + BINARY_CACHE_PLAYER_NOTE if mod_warning else BINARY_CACHE_PLAYER_NOTE
+        messagebox.showwarning("Check this copy before you spawn it", spawn_note)
         if mod_warning:
-            messagebox.showwarning("Mods may hide blocks", mod_warning)
             self.toasts.toast(
                 "Converted copy kept mod or unknown blocks. "
                 "Space Engineers may hide them if the mods are not loaded.",
@@ -757,7 +759,8 @@ class TacticalCommandCenter(ctk.CTk):
             )
         else:
             self.toasts.toast(
-                f"Created {dest_path.name} with {converted} block(s) converted.",
+                f"Created {dest_path.name} with {converted} block(s) converted. "
+                "Delete any old bp.sbcB5 beside it or the game loads the old ship.",
                 level="success",
             )
         self._pending_select_name = dest_path.name
