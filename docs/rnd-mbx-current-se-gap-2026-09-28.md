@@ -2,8 +2,8 @@
 
 **Author:** Nora Vale (R&D) · **Track:** Alex FOUNDER TRACK, Mon inventory  
 **Product:** Meraby Block Exchanger (MBX), baseline ship **v3.2.1** (2026-08-29)  
-**Repo:** `MerabyLabs/SE-Block-Exchanger` · branch `cursor/mbx-current-se-gap-d7b6`  
-**Public title:** unchanged. Jordan owns the rename. This note does not retitle the README.
+**Repo:** `MerabyLabs/Meraby-Block-Exchanger` · branch `cursor/mbx-current-se-gap-d7b6`  
+**Public title:** Meraby Block Exchanger (MBX). This note does not change product chrome.
 
 This is an inventory of what **this repository** encodes today, plus the export needed before any block table is refreshed. It is not a claim that the tables match a current Space Engineers install. No `CubeBlocks*.sbc` (or `SpaceEngineers.exe`) was present on the machine that produced this note. No new DLC or vanilla subtype pairs were added.
 

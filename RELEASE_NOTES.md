@@ -23,7 +23,7 @@ Patch for the portable Windows build. **v3.2.0.exe crashes if you open it from a
 ### Fixes
 - Packaged exe resolves `data/block_costs.json`, bundled profiles, changelog, and icons from the PyInstaller bundle (`_MEIPASS`), not the process working directory. Shortcut launch no longer shows `Fatal Error` / `No such file or directory: 'data\\block_costs.json'`.
 - Missing cost database no longer aborts startup; analytics runs with an empty catalog.
-- File → Create desktop shortcut targets the running `.exe` when frozen (and prefers `Meraby_Block_Exchanger*.exe` from the shortcut script, then a previously published `SE_Tactical_Command*.exe` if that is the only build in the folder). Source launches still fall back to `launch.bat`. The shortcut name is `Meraby Block Exchanger.lnk`.
+- File → Create desktop shortcut targets the running `.exe` when frozen (and `Meraby_Block_Exchanger*.exe` from the shortcut script when that build is in the folder). Source launches still fall back to `launch.bat`. The shortcut name is `Meraby Block Exchanger.lnk`.
 - Frozen profile edits write to `%APPDATA%\SEBlockExchanger\profiles` so they survive updates; bundled profiles still load.
 - 64-bit Windows drag-and-drop no longer overflows `WPARAM`/`LPARAM` (`int too long to convert` / access violation).
 - Selective Exchange no longer crashes on the missing `FONT_CODE_BOLD` theme font.

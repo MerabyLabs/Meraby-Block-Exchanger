@@ -936,8 +936,6 @@ class TacticalCommandCenter(ctk.CTk):
             else:
                 root = project_root()
                 exe_hits = sorted(root.glob("Meraby_Block_Exchanger*.exe"))
-                if not exe_hits:
-                    exe_hits = sorted(root.glob("SE_Tactical_Command*.exe"))
                 if exe_hits:
                     target = exe_hits[-1]
                     icon = f"{target},0"
