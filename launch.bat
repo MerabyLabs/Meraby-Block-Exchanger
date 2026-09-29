@@ -1,5 +1,5 @@
 @echo off
-title Space Engineers Tactical Command
+title Meraby Block Exchanger
 cd /d "%~dp0"
 
 where python >nul 2>nul

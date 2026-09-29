@@ -259,7 +259,7 @@ class SE2MigrationBridge:
             ),
             "blueprint_name": bp_folder.name,
             "grids": grids_data,
-            "generator": f"SE-Block-Exchanger-{__version__}",
+            "generator": f"MBX-{__version__}",
         }
 
         output_json = target_dir / "blueprint.json"

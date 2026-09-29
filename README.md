@@ -1,15 +1,17 @@
-# Space Engineers Block Exchanger
+# Meraby Block Exchanger
 
-**Version 3.2.1 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
+## Offline blueprint toolkit
 
-[![CI](https://github.com/MerabyLabs/SE-Block-Exchanger/actions/workflows/ci.yml/badge.svg)](https://github.com/MerabyLabs/SE-Block-Exchanger/actions/workflows/ci.yml)
-[![Release](https://github.com/MerabyLabs/SE-Block-Exchanger/actions/workflows/release.yml/badge.svg)](https://github.com/MerabyLabs/SE-Block-Exchanger/actions/workflows/release.yml)
+**Version 3.2.2 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
 
-Space Engineers Block Exchanger (SEBX, also branded **Tactical Command**) is a Windows desktop and command-line toolkit for Space Engineers `.sbc` blueprints.
+[![CI](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml)
+[![Release](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml)
+
+Meraby Block Exchanger (MBX) is a Windows desktop and command-line toolkit for local blueprint files.
 
 It converts blocks (armor, thrusters, weapons, functional, DLC → vanilla, opt-in Prototech), imports Workshop/Mod.io ships, inspects programmable-block scripts, splits projector subgrids, hardens or lightens armor, rescales large ↔ small grid, audits PCU/mass/ores, and scores Space Engineers 2 readiness. The GUI **always writes a new copy**; the original ship is not overwritten. The CLI overwrites in place unless you pass `-o` or `--dry-run`.
 
-> Space Engineers is a trademark of Keen Software House. This product is not affiliated with or endorsed by Keen Software House.
+Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
 
 ---
 
@@ -19,27 +21,32 @@ It converts blocks (armor, thrusters, weapons, functional, DLC → vanilla, opt-
 |---|---|
 | Personal use on your own blueprints | Yes, free |
 | Use in private community servers (non-revenue) | Yes, free |
-| Streaming / video content where SEBX is a minor incidental tool | Yes, free |
+| Streaming / video content where MBX is a minor incidental tool | Yes, free |
 | Commercial deployment, paid services, enterprise rollout | **Requires commercial license** |
-| Bundling SEBX into a paid product or paid mod pack | **Requires commercial license** |
+| Bundling MBX into a paid product or paid mod pack | **Requires commercial license** |
 | Redistributing the binaries or source | **No** |
 | Forking and publishing modified versions | **No** |
 | Repackaging or mirroring releases | **No** |
 
-Full terms: see [LICENSE](LICENSE). For commercial licensing inquiries contact Meraby Labs. Forks and pull requests are not solicited.
+Full terms: see [LICENSE](LICENSE). For commercial licensing inquiries email legal@merabylabs.com. Forks and pull requests are not solicited.
 
 ---
 
 ## Download
 
-Official builds are published only at:
+Builds are published only at:
 
-<https://github.com/MerabyLabs/SE-Block-Exchanger/releases>
+<https://github.com/MerabyLabs/Meraby-Block-Exchanger/releases>
 
 Each release ships:
 
-- `SE_Tactical_Command_v<version>.exe` — Windows portable app (no installer)
-- `SHA256SUMS.txt` — verify with `Get-FileHash -Algorithm SHA256`
+- `Meraby_Block_Exchanger_v<version>.exe` — Windows portable app (no installer)
+- `Meraby_Block_Exchanger_v<version>.exe.sha256` — SHA-256 sidecar for that exe
+- `SHA256SUMS.txt` — same hash, with the exe basename on each line
+
+GitHub Release title: `Meraby Block Exchanger v<version>`.
+
+Assets already published under the previous exe name are renamed on the release separately. This repository’s build scripts produce `Meraby_Block_Exchanger_v<version>.exe`. Do not use a v3.2.0 exe — it crashes when opened from a desktop shortcut.
 
 Do not trust copies obtained from any other source. Typical blueprints folder:
 
@@ -51,7 +58,7 @@ Do not trust copies obtained from any other source. Typical blueprints folder:
 
 ### Windows executable (recommended)
 
-1. Download `SE_Tactical_Command_v3.2.1.exe` from the official Releases page. Do not use the v3.2.0 exe — it crashes when opened from a desktop shortcut.
+1. Download `Meraby_Block_Exchanger_v<version>.exe` from the Releases page. Until that asset is published, use the checksum that shipped with the previous exe name on the same release. Do not use a v3.2.0 exe — it crashes when opened from a desktop shortcut.
 2. Double-click it. No installer is required.
 3. If the app does not find your ships, open that local blueprints folder (`Ctrl+O`).
 
@@ -122,7 +129,9 @@ Armor skin / HSV palette is included in the engine: primary hex on armor (or eve
 
 ### Profiles
 
-Files in `profiles/` load on startup. Shipped: WeaponCore, Assertive Armaments, Build Vision. The profile editor can create, duplicate, import/export `.sebx-profile`, import from a URL, test pairs against a ship, and copy a Discord share payload. Drop your own `.sebx-profile` into `profiles/` and restart. See `profiles/README.md`.
+Files in `profiles/` load on startup. Shipped: WeaponCore, Assertive Armaments, Build Vision. The profile editor can create, duplicate, import/export `.sebx-profile`, import from a URL, test pairs against a ship, and copy a Discord share payload. Drop your own `.sebx-profile` into `profiles/` and restart. The `.sebx-profile` extension is unchanged so existing profiles still load. See `profiles/README.md`.
+
+Settings, the update cache, and frozen-build profile edits stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). That folder name is unchanged so existing installs keep their data.
 
 ### Header and Help
 
@@ -182,15 +191,15 @@ Tagged Windows builds embed README, LICENSE, RELEASE_NOTES, `profiles/`, `data/`
 ## Verify a download
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\SE_Tactical_Command_v3.2.1.exe
+Get-FileHash -Algorithm SHA256 .\Meraby_Block_Exchanger_v3.2.2.exe
 ```
 
-Compare the hash to `SHA256SUMS.txt` from the **same** release.
+Compare the hash to `Meraby_Block_Exchanger_v3.2.2.exe.sha256` or to the matching line in `SHA256SUMS.txt` from the **same** release. Both name the exe `Meraby_Block_Exchanger_v<version>.exe`. If a release asset still uses the previous exe name, hash that file against the checksum published beside it.
 
 ---
 
 ## Trademarks and ownership
 
-"Meraby Labs", the Meraby Labs logo, and "Space Engineers Block Exchanger" are trademarks of Meraby Labs. All other trademarks are the property of their respective owners.
+"Meraby Labs", the Meraby Labs logo, and "Meraby Block Exchanger" are trademarks of Meraby Labs. All other trademarks are the property of their respective owners.
 
 © 2025-2026 Meraby Labs. All Rights Reserved. See [LICENSE](LICENSE) for full terms.

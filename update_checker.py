@@ -27,6 +27,7 @@ class UpdateInfo:
 
 
 def _default_cache_path() -> Path:
+    # Keep SEBlockExchanger so the update cache survives the MBX rename.
     appdata = os.getenv("APPDATA")
     if appdata:
         base = Path(appdata) / "SEBlockExchanger"
@@ -44,7 +45,7 @@ class UpdateChecker:
 
     def __init__(
         self,
-        repo: str = "MerabyLabs/SE-Block-Exchanger",
+        repo: str = "MerabyLabs/Meraby-Block-Exchanger",
         cache_path: Optional[Path] = None,
         cache_hours: int = 24,
     ):
@@ -94,7 +95,7 @@ class UpdateChecker:
             url,
             headers={
                 "Accept": "application/vnd.github+json",
-                "User-Agent": "SE-Block-Exchanger",
+                "User-Agent": "Meraby-Block-Exchanger",
             },
         )
         with urllib.request.urlopen(request, timeout=10) as response:

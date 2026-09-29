@@ -31,6 +31,11 @@ def resource_path(*parts: str) -> Path:
 
 
 def user_data_dir() -> Path:
+    """Settings and profile root.
+
+    The folder name stays ``SEBlockExchanger`` (or ``~/.se_block_exchanger``)
+    so installs from before the Meraby Block Exchanger rename keep their data.
+    """
     appdata = os.environ.get("APPDATA")
     base = Path(appdata) / "SEBlockExchanger" if appdata else Path.home() / ".se_block_exchanger"
     base.mkdir(parents=True, exist_ok=True)

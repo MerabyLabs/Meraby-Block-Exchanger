@@ -347,7 +347,7 @@ def main() -> int:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"SE Block Exchanger {__version__}",
+        version=f"Meraby Block Exchanger {__version__}",
     )
 
     args = parser.parse_args()

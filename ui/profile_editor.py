@@ -426,7 +426,7 @@ class ProfileEditorDialog(ctk.CTkToplevel):
         path = filedialog.asksaveasfilename(
             title="Export Profile",
             defaultextension=".sebx-profile",
-            filetypes=[("SEBX Profile", "*.sebx-profile")],
+            filetypes=[("MBX Profile", "*.sebx-profile")],
             initialfile=f"{selected.replace(' ', '_')}.sebx-profile",
         )
         if not path:
