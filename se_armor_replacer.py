@@ -367,6 +367,38 @@ class ArmorBlockReplacer:
         return "\n".join(lines)
 
 
+def _stage_for_spawn_cli(args: argparse.Namespace) -> int:
+    """Staging SOP: copy for spawn, delete bp.sbcB5, gate on non-vanilla subtypes."""
+    from blueprint_converter import stage_blueprint_for_spawn
+    from blueprint_mod_warning import QA_GATE_EXIT_CODE, QA_GATE_LINE
+
+    if not args.input:
+        print("Error: --stage-for-spawn requires a blueprint folder or bp.sbc.", file=sys.stderr)
+        return 1
+    try:
+        dest, warning, removed = stage_blueprint_for_spawn(Path(args.input), Path(args.stage_for_spawn))
+    except BinaryCacheError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Staged for spawn: {dest}")
+    if removed:
+        print("Deleted bp.sbcB5 before spawn.")
+    else:
+        print("No bp.sbcB5 was present. Spawn from bp.sbc.")
+    print(BINARY_CACHE_PLAYER_NOTE)
+    if not warning:
+        return 0
+    print("\n" + warning)
+    print("\n" + warning, file=sys.stderr)
+    print(QA_GATE_LINE)
+    print(QA_GATE_LINE, file=sys.stderr)
+    return QA_GATE_EXIT_CODE
+
+
 def _emit_armor_mod_warning(replacer: ArmorBlockReplacer) -> None:
     """Print the mod-block warning on stdout and stderr. Armor conversions only."""
     from blueprint_mod_warning import armor_category_enabled
@@ -430,12 +462,23 @@ def main() -> int:
         help="Disable profile auto-loading",
     )
     parser.add_argument(
+        "--stage-for-spawn",
+        metavar="DEST",
+        help=(
+            "Copy the blueprint folder to DEST for in-game spawn and delete bp.sbcB5. "
+            "Does not convert blocks. Exits 2 when non-vanilla subtypes need mods at spawn."
+        ),
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"Meraby Block Exchanger {__version__}",
     )
 
     args = parser.parse_args()
+
+    if args.stage_for_spawn:
+        return _stage_for_spawn_cli(args)
 
     categories = _split_categories(args.categories, args.all_categories)
 

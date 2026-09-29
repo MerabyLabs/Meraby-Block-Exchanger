@@ -29,6 +29,11 @@ MOD_BLOCK_WARNING_HEADLINE = "WARNING: MOD OR UNKNOWN BLOCKS"
 MOD_BLOCK_WARNING_DETAIL = (
     "Space Engineers may hide these blocks if the mods are not loaded."
 )
+QA_GATE_EXIT_CODE = 2
+QA_GATE_LINE = (
+    "QA GATE: non-vanilla subtypes are in this blueprint. "
+    "Do not mark invent-critical CLEAR unless the spawn world has those mods loaded."
+)
 
 # Keen-style ids missing from the small cost catalog (gyros, catwalks, …)
 # must not raise the mod warning. Author tokens such as STR350_ and ARYLNX_

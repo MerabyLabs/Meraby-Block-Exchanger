@@ -140,6 +140,10 @@ def test_gui_armor_light_to_heavy_preserves_skp_thrusters(tmp_path: Path):
     assert "STR350_Slope30_2  x4" in warning
     assert "ARYLNX_SCIRCOCCO_Epstein_Drive  x1" in warning
     assert "does not remove or remap" in warning
+    assert "<ModItem>" not in text
+    assert "<WorkshopId>0</WorkshopId>" in text
+    assert "<DLC>Warfare2</DLC>" in text
+    assert text.count('xsi:type="MyObjectBuilder_Thrust"') == 37
 
 
 def test_cli_armor_light_to_heavy_preserves_skp_thrusters(tmp_path: Path):

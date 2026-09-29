@@ -9,14 +9,18 @@ from unittest.mock import patch
 
 import pytest
 
-from blueprint_converter import BlueprintConverter
+from blueprint_converter import BlueprintConverter, stage_blueprint_for_spawn
 from blueprint_fixtures import write_blueprint_dir
 from blueprint_mod_warning import (
     MOD_BLOCK_WARNING_DETAIL,
     MOD_BLOCK_WARNING_HEADLINE,
+    QA_GATE_EXIT_CODE,
+    QA_GATE_LINE,
     is_unresolved_mod_subtype,
     known_vanilla_subtypes,
 )
+from mappings.armor import ARMOR_PAIRS
+from mappings.thrusters import THRUSTER_PAIRS
 from se_armor_replacer import BINARY_CACHE_PLAYER_NOTE, ArmorBlockReplacer, BinaryCacheError, main
 
 MOD_THRUST = (
@@ -50,6 +54,16 @@ def _thrust(subtype: str) -> dict:
 
 def _counts(xml: str, subtype: str) -> int:
     return xml.count(f"<SubtypeName>{subtype}</SubtypeName>")
+
+
+def test_armor_pairs_do_not_remap_thrusters():
+    armor_ids = set(ARMOR_PAIRS) | set(ARMOR_PAIRS.values())
+    thrust_ids = set(THRUSTER_PAIRS) | set(THRUSTER_PAIRS.values())
+    assert armor_ids.isdisjoint(thrust_ids)
+    for subtype in armor_ids:
+        assert "Thrust" not in subtype
+        assert "STR350" not in subtype
+        assert "ARYLNX" not in subtype
 
 
 def test_known_vanilla_includes_armor_and_large_thrusters():
@@ -222,6 +236,65 @@ def test_cli_thruster_category_does_not_emit_armor_mod_warning(tmp_path: Path):
     assert "STR350_Flat" in xml
     assert "LargeBlockArmorBlock" in xml
     assert "LargeHeavyBlockArmorBlock" not in xml
+
+
+def test_stage_for_spawn_deletes_b5_and_gates_mod_subtypes(tmp_path: Path):
+    source = write_blueprint_dir(
+        tmp_path,
+        "SKP",
+        ["LargeBlockArmorBlock", _thrust("LargeBlockSmallThrust"), *MOD_THRUST],
+        extra_files=["bp.sbcB5", "bp_reversed.sbc"],
+    )
+    original = (source / "bp.sbc").read_bytes()
+    dest, warning, removed = stage_blueprint_for_spawn(source, tmp_path / "MerabyQA_stage")
+
+    assert removed is True
+    assert not (dest / "bp.sbcB5").exists()
+    assert (dest / "bp.sbc").read_bytes() == original
+    assert (dest / "bp_reversed.sbc").exists()
+    assert _counts((dest / "bp.sbc").read_text(encoding="utf-8"), "LargeBlockArmorBlock") == 1
+    assert _counts((dest / "bp.sbc").read_text(encoding="utf-8"), "STR350_Flat") == 1
+    assert _counts((dest / "bp.sbc").read_text(encoding="utf-8"), "LargeBlockSmallThrust") == 1
+    assert "STR350_Flat  x1" in warning
+    assert "ARYLNX_SCIRCOCCO_Epstein_Drive  x1" in warning
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with patch(
+        "sys.argv",
+        ["se_armor_replacer", str(source), "--stage-for-spawn", str(tmp_path / "cli-stage")],
+    ):
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = main()
+    assert code == QA_GATE_EXIT_CODE
+    combined = stdout.getvalue() + stderr.getvalue()
+    assert "Deleted bp.sbcB5 before spawn." in combined
+    assert QA_GATE_LINE in combined
+    assert "STR350_Flat  x1" in combined
+    assert not (tmp_path / "cli-stage" / "bp.sbcB5").exists()
+
+
+def test_stage_for_spawn_vanilla_blueprint_exits_clear(tmp_path: Path):
+    source = write_blueprint_dir(
+        tmp_path,
+        "Drone",
+        ["SmallBlockArmorBlock", _thrust("SmallBlockSmallThrust")],
+        grid_size="Small",
+        extra_files=["bp.sbcB5"],
+    )
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with patch(
+        "sys.argv",
+        ["se_armor_replacer", str(source), "--stage-for-spawn", str(tmp_path / "drone-stage")],
+    ):
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = main()
+    assert code == 0
+    combined = stdout.getvalue() + stderr.getvalue()
+    assert QA_GATE_LINE not in combined
+    assert MOD_BLOCK_WARNING_HEADLINE not in combined
+    assert not (tmp_path / "drone-stage" / "bp.sbcB5").exists()
 
 
 def test_converted_folder_omits_b5_and_keeps_reversed_sbc(tmp_path: Path):

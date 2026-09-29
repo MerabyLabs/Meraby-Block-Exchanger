@@ -11,11 +11,44 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import safe_xml
-from blueprint_mod_warning import armor_category_enabled
+from blueprint_mod_warning import armor_category_enabled, warning_for_blueprint_file
 from mappings import MappingRegistry
 from se_armor_replacer import ArmorBlockReplacer, BinaryCacheError, remove_blueprint_binary_cache
 
 _SHIP_BLUEPRINT_TYPE = "MyObjectBuilder_ShipBlueprintDefinition"
+
+
+def stage_blueprint_for_spawn(source: Path, dest: Path) -> Tuple[Path, str, bool]:
+    """Copy a blueprint folder for spawn and delete ``bp.sbcB5``.
+
+    Does not rewrite block subtypes, ModItem, WorkshopId, or DLC entries.
+    Returns ``(dest, mod_warning, binary_cache_removed)``. A locked cache
+    raises ``BinaryCacheError`` and the destination folder is removed.
+    """
+    source = Path(source)
+    dest = Path(dest)
+    if source.is_file():
+        if source.name.lower() != "bp.sbc":
+            raise ValueError(f"Stage a blueprint folder or bp.sbc, not {source.name}")
+        source_dir = source.parent
+    else:
+        source_dir = source
+    bp_file = source_dir / "bp.sbc"
+    if not bp_file.is_file():
+        raise FileNotFoundError(f"No bp.sbc found in: {source_dir}")
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(source_dir, dest)
+    removed = False
+    binary_bp_file = dest / "bp.sbcB5"
+    if binary_bp_file.exists():
+        try:
+            remove_blueprint_binary_cache(binary_bp_file)
+        except BinaryCacheError:
+            shutil.rmtree(dest, ignore_errors=True)
+            raise
+        removed = True
+    return dest, warning_for_blueprint_file(dest / "bp.sbc"), removed
 
 
 def _iter_cube_blocks(root):

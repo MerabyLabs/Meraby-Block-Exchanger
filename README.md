@@ -157,12 +157,14 @@ python se_armor_replacer.py path\to\bp.sbc --all-categories
 python se_armor_replacer.py --list-categories
 python se_armor_replacer.py --list-mappings --categories armor,thrusters
 python se_armor_replacer.py --version
+python se_armor_replacer.py path\to\blueprint --stage-for-spawn path\to\MerabyQA_folder
 ```
 
 - Any `.sbc` file is accepted. A folder prefers `bp.sbc`, then the first sorted `*.sbc`.
 - `--all-categories` is **built-in only** (armor, thrusters, weapons, functional, DLC substitution). Prototech and mod profiles stay opt-in so WeaponCore / Assertive Armaments cannot collide with vanilla mappings.
 - Default CLI conversion is light → heavy armor, **in place**, with a `.sbc.backup` unless `--no-backup`. Use `--dry-run` first.
 - After a write, leftover `bp.sbcB5` binary cache next to the file is removed. If that file stays locked, the operation fails instead of leaving a stale binary for the game to load.
+- Staging SOP, before spawn: `python se_armor_replacer.py path\to\blueprint --stage-for-spawn path\to\MerabyQA_folder`. This copies the folder and deletes `bp.sbcB5`. It does not change block subtypes. Exit code 2 is the QA gate: non-vanilla subtypes are present, so do not mark the check CLEAR unless that world has the mods loaded. A `bp.sbcB5` the game writes while spawning is a bake, not a file this step left behind. If a staged folder already contains `bp.sbcB5`, delete it before spawn.
 - Grid rescale (GUI) uses a 5:1 `Min` ratio; small → large truncates toward zero so negative coordinates are not shifted.
 
 ---
