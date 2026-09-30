@@ -82,7 +82,7 @@ def test_subtype_name_is_not_rewritten_from_a_different_subtype_id(tmp_path: Pat
     folder.mkdir()
     (folder / "bp.sbc").write_text(
         """<?xml version="1.0" encoding="utf-8"?>
-<Definitions>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ShipBlueprints><ShipBlueprint><CubeGrids><CubeGrid><CubeBlocks>
     <MyObjectBuilder_Thrust xsi:type="MyObjectBuilder_Thrust">
       <SubtypeName>STR350_Flat</SubtypeName>
