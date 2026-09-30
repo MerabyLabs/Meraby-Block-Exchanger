@@ -82,7 +82,7 @@ class Footer(ctk.CTkFrame):
         self.update_button.pack(side="right", padx=(6, 2))
         self.update_button.pack_forget()
 
-        version_text = f"v{__version__}  ·  {__channel__}  ·  {__build_date__}"
+        version_text = f"v{__version__}  ·  {__channel__}  ·  released {__build_date__}"
         ctk.CTkLabel(
             self,
             text=version_text,

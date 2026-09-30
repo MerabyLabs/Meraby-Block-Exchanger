@@ -5,6 +5,7 @@ Custom mapping profile loading, validation, and import/export.
 from __future__ import annotations
 
 import json
+import sys
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -185,10 +186,10 @@ class ProfileManager:
                 seen.add(key)
                 try:
                     loaded.append(self.load_profile_file(path))
-                except ProfileValidationError:
-                    if path.suffix.lower() == ".json":
-                        continue
-                    raise
+                except (ProfileValidationError, json.JSONDecodeError, OSError) as exc:
+                    # A broken user profile must not stop the GUI or CLI from opening.
+                    print(f"Warning: skipped profile {path.name}: {exc}", file=sys.stderr)
+                    continue
         return loaded
 
     def list_profiles(self) -> List[MappingProfile]:

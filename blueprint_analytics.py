@@ -556,12 +556,27 @@ class BlueprintAnalyticsEngine:
         return None
 
 
+SE2_SCORE_NOTE = (
+    "Planning score only. It counts subtype-name keywords. "
+    "It is not a Space Engineers 2 load test and not a Keen Software House compatibility result."
+)
+
+SE2_STATUS_TITLES = {
+    "OPTIMAL": "Few keyword flags",
+    "STABLE": "Some keyword flags",
+    "COMPLEX": "Many keyword flags",
+    "FRAGILE": "High keyword load",
+}
+
+
 def compute_se2_readiness(block_counts: Dict[str, int]) -> SE2Readiness:
     """
-    Score a blueprint for Space Engineers 2 / VRage 3 transition risk.
+    Keyword planning score for a possible Space Engineers 2 port.
 
-    DLC reskins, programmable blocks, and mechanical subgrids each reduce
-    the score. The floor is 20 so even dense grids remain comparable.
+    DLC, programmable, and mechanical name fragments each reduce the score.
+    The floor is 20 so dense grids stay comparable. This is not a load test
+    and not a Keen compatibility result. Names that lack the keywords,
+    including several Prosperity pack ids, do not change the score.
     """
     dlc_count = 0
     script_count = 0
@@ -598,4 +613,53 @@ def compute_se2_readiness(block_counts: Dict[str, int]) -> SE2Readiness:
         score=score,
         status=status,
     )
+
+
+def format_se2_notes(
+    display_name: str,
+    grid_size: str,
+    block_count: int,
+    readiness: SE2Readiness,
+) -> str:
+    """User-facing planning notes. Does not claim a vanilla or SE2 clearance."""
+    lines = [
+        f"Planning score — {display_name}",
+        f"{grid_size} grid  ·  {block_count} blocks",
+        SE2_SCORE_NOTE,
+        "",
+    ]
+    if readiness.dlc_count > 0:
+        lines.append(
+            f"DLC keywords: {readiness.dlc_count} block(s) matched the keyword list. "
+            "Subtype names without those words are not counted."
+        )
+    else:
+        lines.append("DLC keywords: none matched. That is not a vanilla-server clearance.")
+    if readiness.script_count > 0:
+        lines.append(
+            f"Script keywords: {readiness.script_count} programmable block name(s). "
+            "This does not inspect the C#."
+        )
+    else:
+        lines.append("Script keywords: none in block names.")
+    if readiness.subgrid_count > 0:
+        lines.append(
+            f"Mechanical keywords: {readiness.subgrid_count} rotor/hinge/piston name(s)."
+        )
+    else:
+        lines.append("Mechanical keywords: none in block names.")
+    lines.append("")
+    if readiness.score >= 90:
+        lines.append(
+            "Keyword score is high. This is not clearance to share the ship, "
+            "and it is not a Space Engineers 2 load result."
+        )
+    elif readiness.score >= 60:
+        lines.append("Keyword score is mixed. These name matches are hints, not a measured port.")
+    else:
+        lines.append(
+            "Keyword score is low because many matched names are DLC, scripts, or mechanical blocks. "
+            "That is still not a Space Engineers 2 load result."
+        )
+    return "\n".join(lines)
 

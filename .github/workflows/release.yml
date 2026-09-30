@@ -36,6 +36,12 @@ jobs:
             throw "Tag ($tag) does not match version.py (v$version)"
           }
 
+      - name: Run tests
+        shell: pwsh
+        run: |
+          pip install pytest
+          python -m pytest -q
+
       - name: Import smoke check
         shell: pwsh
         run: |
@@ -46,7 +52,7 @@ jobs:
         shell: pwsh
         run: |
           $version = python -c "from version import __version__; print(__version__)"
-          pyinstaller --noconfirm --onefile --windowed `
+          pyinstaller --noconfirm --onefile --windowed --noupx `
             --name "Meraby_Block_Exchanger_v$version" `
             --icon "app_icon.ico" `
             --add-data "README.md;." `

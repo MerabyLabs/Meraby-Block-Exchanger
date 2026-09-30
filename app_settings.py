@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List
@@ -63,9 +64,18 @@ class SettingsStore:
     def load(self) -> AppSettings:
         if not self.path.exists():
             return AppSettings()
-        with open(self.path, "r", encoding="utf-8") as handle:
-            data = json.load(handle)
-        return AppSettings.from_dict(data)
+        try:
+            with open(self.path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if not isinstance(data, dict):
+                raise ValueError("settings root must be an object")
+            return AppSettings.from_dict(data)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            print(
+                f"Warning: could not read settings ({self.path}): {exc}. Using defaults.",
+                file=sys.stderr,
+            )
+            return AppSettings()
 
     def save(self, settings: AppSettings) -> None:
         with open(self.path, "w", encoding="utf-8") as handle:

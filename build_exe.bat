@@ -18,7 +18,7 @@ if not exist "app_icon.ico" (
 )
 
 if exist "app_icon.ico" (
-    pyinstaller --noconfirm --onefile --windowed ^
+    pyinstaller --noconfirm --onefile --windowed --noupx ^
         --name "Meraby_Block_Exchanger_v%APP_VERSION%" ^
         --icon "app_icon.ico" ^
         --add-data "README.md;." ^
@@ -31,7 +31,7 @@ if exist "app_icon.ico" (
         --add-data "logo.png;." ^
         gui_standalone.py
 ) else (
-    pyinstaller --noconfirm --onefile --windowed ^
+    pyinstaller --noconfirm --onefile --windowed --noupx ^
         --name "Meraby_Block_Exchanger_v%APP_VERSION%" ^
         --icon "NONE" ^
         --add-data "README.md;." ^
