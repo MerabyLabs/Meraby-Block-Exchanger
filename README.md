@@ -2,7 +2,7 @@
 
 ## Offline blueprint toolkit
 
-**Version 3.2.3 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
+**Version 3.2.3 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. A paid commercial license is not currently for sale.**
 
 [![CI](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml)
 [![Release](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml)
@@ -22,13 +22,13 @@ Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with o
 | Personal use on your own blueprints | Yes, free |
 | Use in private community servers (non-revenue) | Yes, free |
 | Streaming / video content where MBX is a minor incidental tool | Yes, free |
-| Commercial deployment, paid services, enterprise rollout | **Requires commercial license** |
-| Bundling MBX into a paid product or paid mod pack | **Requires commercial license** |
+| Commercial deployment, paid services, enterprise rollout | **Not included.** A paid license is not currently for sale |
+| Bundling MBX into a paid product or paid mod pack | **Not included.** A paid license is not currently for sale |
 | Redistributing the binaries or source | **No** |
 | Forking and publishing modified versions | **No** |
 | Repackaging or mirroring releases | **No** |
 
-Full terms: see [LICENSE](LICENSE). For commercial licensing inquiries email legal@merabylabs.com. Forks and pull requests are not solicited.
+Full terms: see [LICENSE](LICENSE). Personal, non-commercial use is free. MBX does not sell a commercial license, and it will not, until Keen Software House gives written permission. legal@merabylabs.com is a contact address, not a checkout. Forks and pull requests are not solicited.
 
 ---
 

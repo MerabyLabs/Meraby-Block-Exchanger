@@ -14,6 +14,7 @@ from typing import List, Optional
 
 
 SPACE_ENGINEERS_APP_ID = "244850"
+_VDF_PATH_RE = re.compile(r'"path"\s+"([^"]+)"')
 
 
 @dataclass
@@ -43,17 +44,37 @@ class SteamWorkshopFetcher:
             return match.group(1)
         return None
 
+    @staticmethod
+    def library_folders_from_vdf(text: str) -> List[Path]:
+        """Steam library roots named in a ``libraryfolders.vdf`` document."""
+        roots: List[Path] = []
+        for match in _VDF_PATH_RE.finditer(text):
+            raw = match.group(1).replace("\\\\", "\\").strip()
+            if raw:
+                roots.append(Path(raw))
+        return roots
+
+    @classmethod
+    def _remember_dir(cls, dirs: List[Path], seen: set, candidate: Path) -> None:
+        if not candidate.is_dir():
+            return
+        key = os.path.normcase(os.path.normpath(str(candidate)))
+        if key in seen:
+            return
+        seen.add(key)
+        dirs.append(candidate)
+
     @classmethod
     def get_candidate_workshop_dirs(cls) -> List[Path]:
         """Finds common Space Engineers workshop directories on Windows."""
         dirs: List[Path] = []
+        seen: set = set()
 
         # Check AppData SpaceEngineers Workshop cache
         appdata = os.environ.get("APPDATA")
         if appdata:
             se_workshop = Path(appdata) / "SpaceEngineers" / "Blueprints" / "workshop"
-            if se_workshop.is_dir():
-                dirs.append(se_workshop)
+            cls._remember_dir(dirs, seen, se_workshop)
 
         # Check standard Steam install locations
         drives = ["C", "D", "E", "F", "G"]
@@ -65,8 +86,25 @@ class SteamWorkshopFetcher:
                 Path(f"{drive}:/Steam/steamapps/workshop/content/{SPACE_ENGINEERS_APP_ID}"),
             ]
             for p in paths:
-                if p.is_dir():
-                    dirs.append(p)
+                cls._remember_dir(dirs, seen, p)
+
+        # libraryfolders.vdf lists libraries that are not on C:–G: in the
+        # shapes above (another drive letter, or a custom folder name).
+        for drive in drives:
+            for vdf in (
+                Path(f"{drive}:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf"),
+                Path(f"{drive}:/Program Files/Steam/steamapps/libraryfolders.vdf"),
+                Path(f"{drive}:/Steam/steamapps/libraryfolders.vdf"),
+            ):
+                if not vdf.is_file():
+                    continue
+                try:
+                    text = vdf.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                for root in cls.library_folders_from_vdf(text):
+                    workshop = root / "steamapps" / "workshop" / "content" / SPACE_ENGINEERS_APP_ID
+                    cls._remember_dir(dirs, seen, workshop)
 
         return dirs
 

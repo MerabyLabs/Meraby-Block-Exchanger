@@ -410,6 +410,18 @@ def _emit_armor_mod_warning(replacer: ArmorBlockReplacer) -> None:
     print("\n" + warning, file=sys.stderr)
 
 
+def resolve_profile_dir(raw: Optional[str]) -> Path:
+    """Use bundled profiles unless the caller passed ``--profile-dir``.
+
+    The old default was the relative path ``profiles``. Running the CLI from
+    another folder created that directory in the working directory and did
+    not load the profiles shipped next to the program.
+    """
+    if raw and raw.strip():
+        return Path(raw)
+    return bundled_profiles_dir()
+
+
 def _split_categories(raw: Optional[str], use_all: bool) -> Optional[List[str]]:
     if use_all:
         return ["all"]
@@ -453,8 +465,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--profile-dir",
-        default="profiles",
-        help="Profile directory to auto-load (.sebx-profile / .json)",
+        default=None,
+        help="Profile directory to auto-load (.sebx-profile / .json). Default: profiles next to the program",
     )
     parser.add_argument(
         "--no-profiles",
@@ -488,7 +500,7 @@ def main() -> int:
             reverse=args.reverse,
             enabled_categories=categories,
             include_profiles=not args.no_profiles,
-            profile_dir=Path(args.profile_dir),
+            profile_dir=resolve_profile_dir(args.profile_dir),
         )
     except Exception as exc:
         print(f"Error initializing replacer: {exc}", file=sys.stderr)
