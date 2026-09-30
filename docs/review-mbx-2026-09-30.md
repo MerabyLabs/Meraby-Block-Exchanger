@@ -5,7 +5,7 @@ Review of Meraby Block Exchanger 3.2.3 (`main` at the time of the pass). No new 
 Draft fixes:
 
 - Parse / GUI copy safety: https://github.com/MerabyLabs/Meraby-Block-Exchanger/pull/39
-- Windows launch, honesty wording, packaging: this branch
+- Windows launch, honesty wording, packaging: https://github.com/MerabyLabs/Meraby-Block-Exchanger/pull/40
 
 ## P0
 
