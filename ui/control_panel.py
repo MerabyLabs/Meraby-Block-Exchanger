@@ -46,7 +46,6 @@ class ControlPanel(ctk.CTkFrame):
         self._counts_stale = False
 
         container = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=2, pady=2)
 
         details_frame = ctk.CTkFrame(container, **TacticalTheme.card_kwargs())
         details_frame.pack(fill="x", padx=10, pady=(10, 6))
@@ -205,11 +204,7 @@ class ControlPanel(ctk.CTkFrame):
         ).pack(anchor="w", padx=14, pady=(12, 2))
         ctk.CTkLabel(
             category_frame,
-            text=(
-                "Only checked categories are swapped. Everything else stays as it is, "
-                "including blocks this app has no verified subtype ID for. "
-                "Prototech stays off until you check it. Convert always saves a new copy."
-            ),
+            text="Only checked categories are swapped. Unlisted blocks stay as they are.",
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_GRAY,
             wraplength=280,
@@ -220,11 +215,11 @@ class ControlPanel(ctk.CTkFrame):
         self.category_checks_frame = ctk.CTkFrame(category_frame, fg_color="transparent")
         self.category_checks_frame.pack(fill="x", padx=10, pady=(0, 12))
 
-        self.progress = ProgressRing(container)
-        self.progress.pack(fill="x", padx=10)
+        actions = ctk.CTkFrame(self, fg_color="transparent")
+        self.progress = ProgressRing(actions)
 
         self.convert_btn = ctk.CTkButton(
-            container,
+            actions,
             text="Select a blueprint to convert",
             font=TacticalTheme.FONT_LARGE,
             fg_color=TacticalTheme.ORANGE_PRIMARY,
@@ -238,7 +233,7 @@ class ControlPanel(ctk.CTkFrame):
         self.convert_btn.pack(fill="x", padx=10, pady=(10, 4))
 
         ctk.CTkLabel(
-            container,
+            actions,
             text="Creates a new copy. Your original blueprint stays untouched — Undo removes the copy.",
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_GRAY,
@@ -247,7 +242,7 @@ class ControlPanel(ctk.CTkFrame):
             anchor="w",
         ).pack(fill="x", padx=14, pady=(0, 10))
 
-        secondary = ctk.CTkFrame(container, fg_color="transparent")
+        secondary = ctk.CTkFrame(actions, fg_color="transparent")
         secondary.pack(fill="x", padx=10, pady=(0, 12))
         secondary.columnconfigure(0, weight=1)
         secondary.columnconfigure(1, weight=1)
@@ -281,6 +276,9 @@ class ControlPanel(ctk.CTkFrame):
             command=self._batch_convert,
         )
         self.batch_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        actions.pack(side="bottom", fill="x", padx=2, pady=(0, 8))
+        container.pack(fill="both", expand=True, padx=2, pady=2)
 
         # Kept for callers that still look up the old detail_labels mapping.
         self.detail_labels = {
