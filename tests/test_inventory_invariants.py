@@ -169,6 +169,8 @@ def test_se2_export_labels_placeholders(tmp_path: Path):
     payload = json.loads((out_dir / "blueprint.json").read_text(encoding="utf-8"))
     assert payload["translation_status"] == "unverified_internal_placeholders"
     assert "not Keen" in payload["note"]
+    assert "SE1GridsToImport" in payload["note"]
+    assert "not that export" in payload["note"]
     blocks = [block for grid in payload["grids"] for block in grid["blocks"]]
     by_original = {block["original_se1_subtype"]: block for block in blocks}
 

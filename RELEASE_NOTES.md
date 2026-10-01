@@ -10,6 +10,15 @@ Portable build: `Meraby_Block_Exchanger_v{semver}.exe`, with `Meraby_Block_Excha
 
 Settings and user profiles stay in `%APPDATA%\SEBlockExchanger` (or `~/.se_block_exchanger` when AppData is not set). The `.sebx-profile` extension is also unchanged. Existing installs keep their settings and profiles.
 
+## v3.2.4 (2026-10-01)
+
+No new block subtype pairs. Public Keen notes through Space Engineers 1.210 (Prosperity) and Space Engineers 2 VS2.4 still do not publish the subtype IDs this app would need for the new base-game blocks or the Prosperity Pack.
+
+- The SE2 score now counts every subtype in the DLC → vanilla list, including Prosperity, Contact, and Signal IDs that do not contain the old name hints. Connectors are mentioned because Space Engineers 2 still projects only the main grid when a blueprint includes connectors, rotors, or pistons. They do not change the score.
+- The SE2 tab describes a planning estimate. It no longer says a ship is ready to share. Tools → Export SE2 planning JSON explains that the file is not a Space Engineers 2 blueprint. The in-game path remains Keen's Grid Exporter and the `SE1GridsToImport` folder. The JSON note says the same thing.
+- An empty blueprint list says whether the Space Engineers folder is missing, the folder has no ships, or the search matched nothing, and offers Open folder or Clear search.
+- Convert states how many blocks will change, that everything else stays as it is, and that the original ship is not overwritten.
+
 ## v3.2.3 (2026-09-29)
 
 Conversion copies keep Space Engineers block identity. Only the mapped subtype text changes. `scale_grid_size` swaps a leading Large/Small prefix and leaves Large or Small later in the name alone. A locked `bp.sbcB5` fails closed (`BinaryCacheError`; the CLI exits non-zero) so a stale binary cache is not reported as a successful write.

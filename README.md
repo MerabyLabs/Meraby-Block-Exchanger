@@ -2,14 +2,14 @@
 
 ## Offline blueprint toolkit
 
-**Version 3.2.3 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
+**Version 3.2.4 · A Meraby Labs product. Proprietary software. Free for personal, non-commercial use. Commercial use requires a license.**
 
 [![CI](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/ci.yml)
 [![Release](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml/badge.svg)](https://github.com/MerabyLabs/Meraby-Block-Exchanger/actions/workflows/release.yml)
 
 Meraby Block Exchanger (MBX) is a Windows desktop and command-line toolkit for local blueprint files.
 
-It converts blocks (armor, thrusters, weapons, functional, DLC → vanilla, opt-in Prototech), imports Workshop/Mod.io ships, inspects programmable-block scripts, splits projector subgrids, hardens or lightens armor, rescales large ↔ small grid, audits PCU/mass/ores, and scores Space Engineers 2 readiness. The GUI **always writes a new copy**; the original ship is not overwritten. The CLI overwrites in place unless you pass `-o` or `--dry-run`.
+It converts blocks (armor, thrusters, weapons, functional, DLC → vanilla, opt-in Prototech), imports Workshop/Mod.io ships, inspects programmable-block scripts, splits projector subgrids, hardens or lightens armor, rescales large ↔ small grid, audits PCU/mass/ores, and estimates Space Engineers 2 readiness. The GUI **always writes a new copy**; the original ship is not overwritten. The CLI overwrites in place unless you pass `-o` or `--dry-run`.
 
 Works with local Space Engineers blueprint (`.sbc`) files. Not affiliated with or endorsed by Keen Software House. Space Engineers is a trademark of Keen Software House.
 
@@ -102,7 +102,7 @@ Dependencies: CustomTkinter 5.x, `defusedxml`, Pillow (header logo).
 | **XML** | Blueprint XML (truncated if huge). Errors appear in the tab status, not a fake “loaded” label |
 | **Analytics** | PCU, mass, ores, ingots, components, category mix, conversion cost delta, health audit (control, power, thruster balance, unknown subtypes) with fix actions; CSV/TXT export |
 | **Subgrids** | Clickable CubeGrid tree and a 2D voxel map from `Min` coordinates (`TopGridId` links). Click a rotor/turret to isolate that grid; Fit uses that grid’s bounds. Single-grid ships still draw a map |
-| **SE2** | Readiness score from DLC usage, programmable-block scripts, and mechanical subgrids. **Replace DLC with vanilla** and **large ↔ small grid rescale** from this tab |
+| **SE2** | Planning estimate from DLC blocks (the substitution list plus name hints), programmable-block scripts, and mechanical subgrids. It is not a promise the ship will load in Space Engineers 2. Public SE2 notes still say a blueprint with connectors, rotors, or pistons projects only the main grid. **Replace DLC with vanilla** and **large ↔ small grid rescale** from this tab |
 
 ### File menu
 
@@ -123,7 +123,7 @@ Drop a blueprint folder onto the window on Windows.
 - **Upgrade to Prototech** — vanilla → Prototech copy
 - **Harden armor around cores** — heavy armor near reactors, cockpits, and similar
 - **Lightweight outer hull** — light armor on the outer shell
-- **Export Space Engineers 2 JSON**
+- **Export SE2 planning JSON** — a new folder with placeholder subtype names. It is not Keen's Grid Exporter output. To import a grid into Space Engineers 2, use that in-game exporter (`/export`) and copy the file into `SE1GridsToImport`
 
 Armor skin / HSV palette is included in the engine: primary hex on armor (or every matching block if secondary is omitted); secondary hex on non-armor, or on heavy armor when both colors are set with armor-only.
 
@@ -193,10 +193,10 @@ Tagged Windows builds embed README, LICENSE, RELEASE_NOTES, `profiles/`, `data/`
 ## Verify a download
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\Meraby_Block_Exchanger_v3.2.3.exe
+Get-FileHash -Algorithm SHA256 .\Meraby_Block_Exchanger_v3.2.4.exe
 ```
 
-Compare the hash to `Meraby_Block_Exchanger_v3.2.3.exe.sha256` or to the matching line in `SHA256SUMS.txt` from the **same** release. Both name the exe `Meraby_Block_Exchanger_v<version>.exe`. If a release asset still uses the previous exe name, hash that file against the checksum published beside it.
+Compare the hash to `Meraby_Block_Exchanger_v3.2.4.exe.sha256` or to the matching line in `SHA256SUMS.txt` from the **same** release. Both name the exe `Meraby_Block_Exchanger_v<version>.exe`. If a release asset still uses the previous exe name, hash that file against the checksum published beside it.
 
 ---
 

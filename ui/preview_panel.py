@@ -15,10 +15,13 @@ import customtkinter as ctk
 from blueprint_analytics import (
     ConversionComparison,
     HealthIssue,
+    SE2_PLANNING_BLURB,
+    SE2_STATUS_TITLES,
     SE2Readiness,
     SEVERITY_ERROR,
     SEVERITY_INFO,
     SEVERITY_WARNING,
+    format_se2_readiness_lines,
 )
 from subgrid_engine.hierarchy_parser import MultiGridStructure
 from ui.labels import category_label
@@ -513,14 +516,17 @@ class PreviewPanel(ctk.CTkFrame):
         source = "light" if conversion_mode == "light_to_heavy" else "heavy"
         target = "heavy" if conversion_mode == "light_to_heavy" else "light"
         ready = sum((bp_info.convertible_counts or {}).values())
+        unchanged = max(0, int(bp_info.block_count) - ready)
         lines = [
             f"{bp_info.display_name}",
             f"{bp_info.grid_size} grid  ·  {bp_info.block_count:,} blocks",
             f"{bp_info.light_armor_count:,} light armor  ·  {bp_info.heavy_armor_count:,} heavy armor",
             "",
             f"Direction: {source} → {target}",
-            f"{ready:,} blocks will convert with the current settings",
-            f"{convertible:,} armor blocks match this direction",
+            f"{ready:,} blocks will change with the current settings.",
+            f"{unchanged:,} blocks stay as they are.",
+            f"{convertible:,} armor blocks match this direction.",
+            "Convert writes a new copy. The original ship is not overwritten.",
             "",
             f"File: {bp_info.path}",
         ]
@@ -837,7 +843,7 @@ class PreviewPanel(ctk.CTkFrame):
         
         self.se2_status_desc = ctk.CTkLabel(
             score_details,
-            text="We'll check DLC usage, scripts, and subgrids so you know how shareable this ship is for Space Engineers 2.",
+            text=SE2_PLANNING_BLURB,
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_CYAN,
             wraplength=520,
@@ -923,7 +929,7 @@ class PreviewPanel(ctk.CTkFrame):
         self.se2_audit_textbox.pack(fill="both", expand=True, padx=12, pady=(4, 12))
         self._set_textbox_content(
             self.se2_audit_textbox,
-            "Select a blueprint to see Space Engineers 2 readiness.\n"
+            "Select a blueprint to see a Space Engineers 2 planning estimate.\n" + SE2_PLANNING_BLURB + "\n"
         )
 
     def _vanillafy_clicked(self):
@@ -949,9 +955,6 @@ class PreviewPanel(ctk.CTkFrame):
 
         score = readiness.score
         status = readiness.status
-        dlc_count = readiness.dlc_count
-        script_count = readiness.script_count
-        subgrid_count = readiness.subgrid_count
 
         self.se2_score_label.configure(text=f"{score}%")
 
@@ -964,56 +967,27 @@ class PreviewPanel(ctk.CTkFrame):
         else:
             color = TacticalTheme.RED_PRIMARY
             
-        status_title = {
-            "OPTIMAL": "Ready to share",
-            "STABLE": "Mostly ready",
-            "COMPLEX": "Needs cleanup",
-        }.get(status, "High complexity")
+        status_title = SE2_STATUS_TITLES.get(status, "Hard to carry over")
         self.se2_status_title.configure(text=status_title, text_color=color)
         self.se2_score_label.configure(text_color=color)
-        
-        desc = (
-            f"Scored {status.lower()} from DLC usage, scripts, and subgrids. "
-            "Use the tools below to make a vanilla copy or switch grid size — originals stay untouched."
+
+        self.se2_status_desc.configure(text=SE2_PLANNING_BLURB)
+        log_text = format_se2_readiness_lines(
+            readiness,
+            display_name=info.display_name,
+            grid_size=info.grid_size,
+            block_count=info.block_count,
         )
-        self.se2_status_desc.configure(text=desc)
-        
-        log_text = []
-        log_text.append(f"SE2 readiness — {info.display_name}")
-        log_text.append(f"{info.grid_size} grid  ·  {info.block_count} blocks")
-        log_text.append("")
-        
-        if dlc_count > 0:
-            log_text.append(f"DLC: {dlc_count} block(s) need expansion packs.")
-            log_text.append("    Tip: Replace DLC with vanilla to make this freely shareable.")
-        else:
-            log_text.append("DLC: none — this is a vanilla build.")
-            
-        if script_count > 0:
-            log_text.append(f"Scripts: {script_count} programmable block(s). Some C# may need updates in SE2.")
-        else:
-            log_text.append("Scripts: none.")
-            
-        if subgrid_count > 0:
-            log_text.append(f"Subgrids: {subgrid_count} rotor/hinge/piston chain(s). Test physics after spawning in SE2.")
-        else:
-            log_text.append("Subgrids: none — single grid.")
-            
-        log_text.append("")
-        if score >= 90:
-            log_text.append("Recommendation: ready to share on vanilla servers.")
-        elif score >= 60:
-            log_text.append("Recommendation: replace DLC or confirm expansion packs before sharing.")
-        else:
-            log_text.append("Recommendation: simplify scripts and standardise blocks before transitioning.")
-            
         self._set_textbox_content(self.se2_audit_textbox, "\n".join(log_text))
 
     def clear_se2_transition(self):
         self.se2_score_label.configure(text="--", text_color=TacticalTheme.GREEN_PRIMARY)
         self.se2_status_title.configure(text="Select a blueprint to score it", text_color=TacticalTheme.CYAN_PRIMARY)
-        self.se2_status_desc.configure(text="We'll check DLC usage, scripts, and subgrids so you know how shareable this ship is for Space Engineers 2.")
-        self._set_textbox_content(self.se2_audit_textbox, "Select a blueprint to see Space Engineers 2 readiness.\n")
+        self.se2_status_desc.configure(text=SE2_PLANNING_BLURB)
+        self._set_textbox_content(
+            self.se2_audit_textbox,
+            "Select a blueprint to see a Space Engineers 2 planning estimate.\n" + SE2_PLANNING_BLURB + "\n",
+        )
         self.btn_vanillafy.configure(state="disabled")
         self.btn_gridsizer.configure(state="disabled")
 

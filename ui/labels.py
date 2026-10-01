@@ -151,3 +151,151 @@ def card_status_label(convertible: int, scanned: bool) -> str:
     if convertible <= 0:
         return "Already matches"
     return f"{convertible} ready to convert"
+
+
+def _checked_category_text(category_ids: list[str] | None) -> str:
+    ids = [str(name) for name in (category_ids or []) if name]
+    if not ids:
+        return "Armor"
+    return ", ".join(category_label(name) for name in ids)
+
+
+def nothing_to_convert_message(category_ids: list[str] | None = None) -> str:
+    """Explain a zero-match preview without implying the ship was already converted."""
+    checked = _checked_category_text(category_ids)
+    return (
+        f"No blocks match {checked}, so Convert will not change this ship. "
+        "Blocks outside the checked categories stay as they are, including blocks "
+        "this app has no verified swap for. "
+        "A conversion writes a new copy and does not overwrite the original."
+    )
+
+
+def pending_change_message(count: int, category_ids: list[str] | None = None) -> str:
+    """Short outcome line for the control panel after a dry-run."""
+    if count <= 0:
+        return nothing_to_convert_message(category_ids)
+    block_word = "block" if count == 1 else "blocks"
+    return (
+        f"{count} {block_word} will be rewritten in a new copy. "
+        "Blocks outside the checked categories stay as they are. "
+        "The original ship is not overwritten."
+    )
+
+
+def armor_change_message(
+    *,
+    ready: int,
+    armor_ready: int,
+    reverse: bool,
+    category_ids: list[str] | None = None,
+) -> str:
+    """Before/after summary that keeps non-armor swaps visible."""
+    if ready <= 0:
+        return nothing_to_convert_message(category_ids)
+    block_word = "block" if ready == 1 else "blocks"
+    direction = "light" if reverse else "heavy"
+    if armor_ready == ready:
+        summary = f"{ready} {block_word} will be rewritten in a new copy toward {direction} armor."
+    elif armor_ready == 0:
+        summary = f"{ready} {block_word} will be rewritten using the selected categories."
+    else:
+        other = ready - armor_ready
+        summary = (
+            f"{ready} {block_word} will be rewritten "
+            f"({armor_ready} armor toward {direction}, {other} other)."
+        )
+    return (
+        summary
+        + " Blocks outside the checked categories stay as they are. "
+        "The original ship is not overwritten."
+    )
+
+
+def convert_confirm_body(
+    *,
+    display_name: str,
+    count: int,
+    target: str,
+    category_text: str,
+) -> str:
+    block_word = "block" if count == 1 else "blocks"
+    return (
+        f"Create a new copy of '{display_name}' with {count} {block_word} converted to {target}?\n\n"
+        f"Included: {category_text}\n"
+        "Blocks outside those categories stay as they are.\n\n"
+        "The original blueprint is not changed. Undo removes the new copy."
+    )
+
+
+def copy_created_message(
+    name: str,
+    scanned: int,
+    converted: int,
+    *,
+    kind: str = "convert",
+) -> str:
+    """Outcome toast after a GUI copy. The original is never described as overwritten."""
+    unchanged = max(0, int(scanned) - int(converted))
+    if kind == "se2":
+        return (
+            f"Wrote a planning file in {name}. "
+            f"{converted} of {scanned} blocks used an internal placeholder name; "
+            f"{unchanged} kept their Space Engineers 1 subtype. "
+            "This folder is not a Space Engineers 2 blueprint, and the original ship was not overwritten."
+        )
+    if kind == "vanillafy" and converted <= 0:
+        return (
+            f"Created {name}. No blocks matched the DLC → vanilla list, so the copy matches the original. "
+            "Blocks this app has no verified swap for were left as they are. "
+            "The original ship was not overwritten."
+        )
+    if kind == "vanillafy":
+        return (
+            f"Created {name}. {converted} of {scanned} blocks were replaced with vanilla equivalents. "
+            f"{unchanged} block(s) were left as they are. The original ship was not overwritten."
+        )
+    if converted <= 0:
+        return (
+            f"Created {name}, but no blocks matched the current settings, so the copy matches the original. "
+            "The original ship was not overwritten."
+        )
+    return (
+        f"Created {name}. {converted} of {scanned} blocks changed; "
+        f"{unchanged} were left as they are. "
+        "The original ship was not overwritten. "
+        "Delete any old bp.sbcB5 beside the copy or the game loads the old ship."
+    )
+
+
+def se2_export_confirm_message(display_name: str) -> str:
+    return (
+        f"Write a planning JSON copy of '{display_name}'?\n\n"
+        "The file uses internal placeholder names. It is not a Space Engineers 2 blueprint, "
+        "and Space Engineers 2 will not import it.\n\n"
+        "To move a grid into Space Engineers 2, use Keen's Grid Exporter in Space Engineers 1 "
+        "(chat command /export) and copy that file into the SE2 folder SE1GridsToImport.\n\n"
+        "The original blueprint is not changed."
+    )
+
+
+def library_empty_copy(reason: str) -> tuple[str, str]:
+    """Title and body for the blueprint list when there is nothing to pick."""
+    if reason == "missing":
+        return (
+            "Space Engineers folder not found",
+            "On Windows, ships usually live in %APPDATA%\\SpaceEngineers\\Blueprints\\local.\n"
+            "Open that folder, or drop a blueprint folder on this window.\n"
+            "Convert always writes a new copy and leaves the original ship alone.",
+        )
+    if reason == "search":
+        return (
+            "No ships match that search",
+            "Clear the search box to see every ship in this folder.",
+        )
+    return (
+        "No ships in this folder",
+        "Each ship is a folder that contains bp.sbc.\n"
+        "Open your local blueprints folder, or use File → Import Workshop / Mod.io blueprint.\n"
+        "Convert writes a new copy beside the original. It does not overwrite the ship you picked.",
+    )

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Set
 
 import safe_xml
+from mappings.dlc_substitution import DLC_TO_BASE_PAIRS
 from resource_paths import resource_path
 
 
@@ -69,6 +70,22 @@ class SE2Readiness:
     subgrid_count: int
     score: int
     status: str
+    dlc_subtypes: tuple[str, ...] = ()
+    connector_count: int = 0
+
+
+# Player-facing labels. OPTIMAL is a low-risk estimate, not a load guarantee.
+SE2_STATUS_TITLES = {
+    "OPTIMAL": "Straightforward ship",
+    "STABLE": "Mostly straightforward",
+    "COMPLEX": "Needs cleanup",
+    "FRAGILE": "Hard to carry over",
+}
+
+SE2_PLANNING_BLURB = (
+    "This score is a planning estimate from DLC blocks, scripts, and mechanical subgrids. "
+    "It does not mean the ship will load in Space Engineers 2."
+)
 
 
 @dataclass
@@ -518,7 +535,10 @@ class BlueprintAnalyticsEngine:
                     severity=SEVERITY_INFO,
                     code="unknown_blocks",
                     message=f"{len(unknown_subtypes)} block subtype(s) are unknown to the local cost database.",
-                    suggestion="These may be modded/DLC blocks or missing cost data entries.",
+                    suggestion=(
+                        "Convert only rewrites subtypes in the checked categories. "
+                        "Unknown subtypes are left unchanged. A missing cost entry is not proof the block is vanilla."
+                    ),
                 )
             )
 
@@ -556,25 +576,55 @@ class BlueprintAnalyticsEngine:
         return None
 
 
+def _is_dlc_subtype(subtype: str) -> bool:
+    """True for a DLC substitution source, or a name that still matches a DLC hint.
+
+    The substitution list catches Prosperity, Contact, and Signal IDs that
+    contain none of DLC_KEYWORDS. Keywords stay so unlisted reskins still count.
+    """
+    if subtype in DLC_TO_BASE_PAIRS:
+        return True
+    lowered = subtype.lower()
+    return any(keyword in lowered for keyword in DLC_KEYWORDS)
+
+
+def _is_connector_subtype(subtype: str) -> bool:
+    return "connector" in subtype.lower()
+
+
 def compute_se2_readiness(block_counts: Dict[str, int]) -> SE2Readiness:
     """
-    Score a blueprint for Space Engineers 2 / VRage 3 transition risk.
+    Score a blueprint for Space Engineers 2 transition risk.
 
-    DLC reskins, programmable blocks, and mechanical subgrids each reduce
+    DLC blocks, programmable blocks, and mechanical subgrids each reduce
     the score. The floor is 20 so even dense grids remain comparable.
+    Connectors are counted for the official projection note and do not
+    change the score: most ships have one, and scoring them would hide
+    the other risks.
     """
     dlc_count = 0
     script_count = 0
     subgrid_count = 0
+    connector_count = 0
+    dlc_subtypes: List[str] = []
 
     for subtype, qty in block_counts.items():
+        try:
+            amount = int(qty)
+        except (TypeError, ValueError):
+            continue
+        if amount <= 0:
+            continue
         subtype_lower = subtype.lower()
-        if any(keyword in subtype_lower for keyword in DLC_KEYWORDS):
-            dlc_count += qty
+        if _is_dlc_subtype(subtype):
+            dlc_count += amount
+            dlc_subtypes.append(subtype)
         if "programmable" in subtype_lower:
-            script_count += qty
+            script_count += amount
         if any(keyword in subtype_lower for keyword in MECHANICAL_KEYWORDS):
-            subgrid_count += qty
+            subgrid_count += amount
+        if _is_connector_subtype(subtype):
+            connector_count += amount
 
     score = 100
     score -= min(25, dlc_count * 5)
@@ -597,5 +647,92 @@ def compute_se2_readiness(block_counts: Dict[str, int]) -> SE2Readiness:
         subgrid_count=subgrid_count,
         score=score,
         status=status,
+        dlc_subtypes=tuple(sorted(dlc_subtypes)),
+        connector_count=connector_count,
     )
+
+
+def _join_names(names: tuple[str, ...] | List[str], limit: int = 6) -> str:
+    shown = list(names)[:limit]
+    extra = len(names) - len(shown)
+    text = ", ".join(shown)
+    if extra > 0:
+        text += f", and {extra} more"
+    return text
+
+
+def format_se2_readiness_lines(
+    readiness: SE2Readiness,
+    *,
+    display_name: str = "",
+    grid_size: str = "",
+    block_count: int = 0,
+) -> List[str]:
+    """Player-facing SE2 notes. Planning language only; no invented block IDs."""
+    lines: List[str] = []
+    if display_name:
+        lines.append(f"SE2 planning estimate — {display_name}")
+    else:
+        lines.append("SE2 planning estimate")
+    if grid_size or block_count:
+        lines.append(f"{grid_size or 'Unknown'} grid  ·  {block_count} blocks")
+    lines.append(SE2_PLANNING_BLURB)
+    lines.append("")
+
+    if readiness.dlc_count > 0:
+        named = _join_names(readiness.dlc_subtypes)
+        lines.append(
+            f"DLC: {readiness.dlc_count} block(s) match the DLC list or a DLC name hint"
+            + (f" ({named})." if named else ".")
+        )
+        lines.append("    Replace DLC with vanilla to make a copy that does not need those packs.")
+    else:
+        lines.append("DLC: none of the counted blocks matched the DLC list or a DLC name hint.")
+
+    lines.append(
+        "Blocks whose subtype IDs were never published are not flagged. "
+        "The public 1.210 notes name a Prototech O2/H2 Generator, Flat Collector, "
+        "Structural Platform Conveyor, Short Stairs, Passage 2 Frame, and the Prosperity Pack "
+        "without subtype IDs, so those blocks stay unchanged unless an ID is already in this app."
+    )
+    lines.append("")
+
+    if readiness.script_count > 0:
+        lines.append(
+            f"Scripts: {readiness.script_count} programmable block(s). "
+            "This estimate does not check whether that C# carries over."
+        )
+    else:
+        lines.append("Scripts: none.")
+
+    if readiness.subgrid_count > 0:
+        lines.append(
+            f"Mechanical subgrids: {readiness.subgrid_count} rotor, hinge, or piston block(s)."
+        )
+    else:
+        lines.append("Mechanical subgrids: no rotors, hinges, or pistons counted.")
+
+    if readiness.connector_count > 0:
+        lines.append(f"Connectors: {readiness.connector_count}. These do not change the score.")
+
+    if readiness.subgrid_count > 0 or readiness.connector_count > 0:
+        lines.append(
+            "Space Engineers 2 still projects only the main grid when a blueprint includes "
+            "connectors, rotors, or pistons. Keen's Grid Exporter does not support subgrids either."
+        )
+    lines.append("")
+
+    if readiness.score >= 90:
+        lines.append("Few of the tracked risks showed up. This is still only a planning estimate.")
+    elif readiness.score >= 60:
+        lines.append("Replace paid DLC blocks if you want a copy that does not need those packs.")
+    else:
+        lines.append("Scripts, DLC blocks, or mechanical subgrids need a closer look before you carry this ship over.")
+
+    lines.append(
+        "To bring a grid into Space Engineers 2, use Keen's Grid Exporter in Space Engineers 1 "
+        "(chat command /export) and copy that file into the SE2 folder SE1GridsToImport. "
+        "The JSON from this app is a planning file. Its names are not Keen block IDs."
+    )
+    return lines
 
