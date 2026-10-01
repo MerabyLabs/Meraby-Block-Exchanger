@@ -406,7 +406,10 @@ class SE2MigrationBridge:
             "note": (
                 "subtype values are MBX-internal placeholders for planning. "
                 "They are not Keen Space Engineers 2 block IDs and were not "
-                "checked against a game install."
+                "checked against a game install. "
+                "To import a grid into Space Engineers 2, use Keen's Grid Exporter "
+                "in Space Engineers 1 and copy the result into SE1GridsToImport. "
+                "This file is not that export."
             ),
             "blueprint_name": bp_folder.name,
             "grids": grids_data,

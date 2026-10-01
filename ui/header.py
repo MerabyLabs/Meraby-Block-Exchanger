@@ -78,7 +78,7 @@ class Header(ctk.CTkFrame):
 
         ctk.CTkLabel(
             title_block,
-            text="Offline blueprint toolkit  ·  Meraby Labs",
+            text="Swap blocks in a new copy. The original ship stays put.",
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_GRAY,
         ).pack(anchor="w", pady=(2, 0))
@@ -159,6 +159,8 @@ class Header(ctk.CTkFrame):
     def set_blueprint_count(self, count: int):
         if count == 1:
             self.bp_count_label.configure(text="1 blueprint")
+        elif count == 0:
+            self.bp_count_label.configure(text="No blueprints yet")
         else:
             self.bp_count_label.configure(text=f"{count} blueprints")
 

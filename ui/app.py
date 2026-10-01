@@ -31,7 +31,15 @@ from ui.control_panel import ControlPanel
 from ui.dragdrop_windows import WindowsFileDropTarget
 from ui.footer import Footer
 from ui.header import Header
-from ui.labels import category_label, conversion_target_phrase, convertible_total
+from ui.labels import (
+    category_label,
+    conversion_target_phrase,
+    convert_confirm_body,
+    copy_created_message,
+    library_empty_copy,
+    se2_export_confirm_message,
+    convertible_total,
+)
 from ui.preview_panel import PreviewPanel
 from ui.profile_editor import ProfileEditorDialog
 from ui.selective_exchange_panel import SelectiveExchangePanel
@@ -252,7 +260,7 @@ class TacticalCommandCenter(ctk.CTk):
         tools_menu.add_separator()
         tools_menu.add_command(label="Harden armor around cores…", command=self.harden_active_armor)
         tools_menu.add_command(label="Lightweight outer hull…", command=self.lightweight_active_armor)
-        tools_menu.add_command(label="Export Space Engineers 2 JSON", command=self.export_se2_blueprint)
+        tools_menu.add_command(label="Export SE2 planning JSON…", command=self.export_se2_blueprint)
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -445,6 +453,12 @@ class TacticalCommandCenter(ctk.CTk):
                 self._ui(self._on_blueprints_loaded)
             except FileNotFoundError:
                 self._ui(self._on_scan_not_found)
+            except RuntimeError as exc:
+                if "APPDATA" not in str(exc):
+                    error_message = str(exc)
+                    self._ui(lambda msg=error_message: self._show_error(f"Scan failed: {msg}"))
+                    return
+                self._ui(self._on_scan_not_found)
             except Exception as exc:
                 error_message = str(exc)
                 self._ui(lambda msg=error_message: self._show_error(f"Scan failed: {msg}"))
@@ -456,7 +470,7 @@ class TacticalCommandCenter(ctk.CTk):
         self.header.set_blueprint_count(count)
         self.footer.set_status(f"{count} blueprint{'s' if count != 1 else ''} loaded")
         self.footer.set_scanned(count)
-        self.blueprint_panel.set_blueprints(self.blueprints)
+        self.blueprint_panel.set_blueprints(self.blueprints, empty_reason="empty")
         self.blueprint_panel.set_recent_blueprints(self.settings.recent_blueprints)
 
         target = self._pending_select_name
@@ -477,12 +491,9 @@ class TacticalCommandCenter(ctk.CTk):
         self.blueprints = []
         self.header.set_blueprint_count(0)
         self.footer.set_status("Space Engineers folder not found")
-        self.blueprint_panel.set_blueprints([])
-        messagebox.showwarning(
-            "Blueprint folder not found",
-            "The Space Engineers Blueprints folder was not found.\n\n"
-            "Use Open folder or drop a blueprint folder here.",
-        )
+        self.blueprint_panel.set_blueprints([], empty_reason="missing")
+        title, body = library_empty_copy("missing")
+        messagebox.showwarning(title, body)
 
     def browse_blueprint_dir(self):
         chosen = filedialog.askdirectory(title="Open Blueprints folder", mustexist=True)
@@ -710,11 +721,15 @@ class TacticalCommandCenter(ctk.CTk):
         warning_block = f"\n\n{mod_warning}" if mod_warning else ""
         confirm = messagebox.askyesno(
             "Create a converted copy?",
-            f"Create a new copy of '{bp.display_name}' with {count} block(s) converted to {target}?\n\n"
-            f"Included: {category_text}\n\n"
-            "The original blueprint is not changed. Undo removes the new copy.\n\n"
-            f"{BINARY_CACHE_PLAYER_NOTE}"
-            f"{warning_block}",
+            convert_confirm_body(
+                display_name=bp.display_name,
+                count=count,
+                target=target,
+                category_text=category_text,
+            )
+            + "\n\n"
+            + BINARY_CACHE_PLAYER_NOTE
+            + warning_block,
         )
         if not confirm:
             return
@@ -746,7 +761,7 @@ class TacticalCommandCenter(ctk.CTk):
         if not preview_file.exists():
             preview_file = dest_path / "blueprint.json"
         if preview_file.exists():
-            self.preview_panel.load_xml(preview_file, f"Converted: {dest_path.name}")
+            self.preview_panel.load_xml(preview_file, f"Converted copy: {dest_path.name}")
         mod_warning = self.converter.last_mod_block_warning
         spawn_note = mod_warning + "\n\n" + BINARY_CACHE_PLAYER_NOTE if mod_warning else BINARY_CACHE_PLAYER_NOTE
         messagebox.showwarning("Check this copy before you spawn it", spawn_note)
@@ -759,9 +774,9 @@ class TacticalCommandCenter(ctk.CTk):
             )
         else:
             self.toasts.toast(
-                f"Created {dest_path.name} with {converted} block(s) converted. "
-                "Delete any old bp.sbcB5 beside it or the game loads the old ship.",
+                copy_created_message(dest_path.name, scanned, converted),
                 level="success",
+                duration=7000,
             )
         self._pending_select_name = dest_path.name
         self.load_blueprints_async()
@@ -822,8 +837,9 @@ class TacticalCommandCenter(ctk.CTk):
 
         self.preview_panel.load_xml(dest_path / "bp.sbc", f"Vanilla copy: {dest_path.name}")
         self.toasts.toast(
-            f"Created {dest_path.name} with {converted} DLC block(s) replaced.",
+            copy_created_message(dest_path.name, scanned, converted, kind="vanillafy"),
             level="success",
+            duration=7000,
         )
         self._pending_select_name = dest_path.name
         self.load_blueprints_async()
@@ -1183,15 +1199,21 @@ class TacticalCommandCenter(ctk.CTk):
             self.toasts.toast("Select a blueprint first.", level="warning")
             return
         bp = self.selected_blueprint
+        confirm = messagebox.askyesno(
+            "Write a planning JSON copy?",
+            se2_export_confirm_message(bp.display_name),
+        )
+        if not confirm:
+            return
 
         def worker():
             from engine_compat import SE2MigrationBridge
 
             return SE2MigrationBridge.migrate_se1_to_se2(bp.path)
 
-        self._start_named_conversion("Exporting SE2 JSON…", worker)
+        self._start_named_conversion("Exporting SE2 planning JSON…", worker, completion="se2")
 
-    def _start_named_conversion(self, status: str, worker):
+    def _start_named_conversion(self, status: str, worker, *, completion: str = "convert"):
         self.control_panel.set_convert_enabled(False)
         self.control_panel.progress.start_indeterminate(status)
         self.footer.set_status(status)
@@ -1199,12 +1221,35 @@ class TacticalCommandCenter(ctk.CTk):
         def task():
             try:
                 dest, scanned, converted = worker()
-                self._ui(lambda: self._on_conversion_complete(dest, scanned, converted))
+
+                def apply(dest=dest, scanned=scanned, converted=converted, completion=completion):
+                    if completion == "se2":
+                        self._on_se2_export_complete(dest, scanned, converted)
+                    else:
+                        self._on_conversion_complete(dest, scanned, converted)
+
+                self._ui(apply)
             except Exception as exc:
                 error_message = str(exc)
                 self._ui(lambda msg=error_message: self._on_conversion_error(msg))
 
         threading.Thread(target=task, daemon=True).start()
+
+    def _on_se2_export_complete(self, dest_path: Path, scanned: int, converted: int):
+        self.control_panel.progress.stop()
+        self._undo_stack.append(dest_path)
+        self.footer.set_scanned(scanned)
+        self.footer.set_converted(self._converted_count)
+        self.footer.set_status("Planning JSON written")
+        self._update_convert_state()
+        preview_file = dest_path / "blueprint.json"
+        if preview_file.exists():
+            self.preview_panel.load_xml(preview_file, f"Planning JSON: {dest_path.name}")
+        self.toasts.toast(
+            copy_created_message(dest_path.name, scanned, converted, kind="se2"),
+            level="info",
+            duration=8000,
+        )
 
     def batch_convert(self):
         selected_bps = self.blueprint_panel.get_selected_blueprints()

@@ -2,6 +2,7 @@
 
 import customtkinter as ctk
 from typing import List, Optional, Callable
+from ui.labels import library_empty_copy
 from ui.theme import TacticalTheme
 from ui.widgets.blueprint_card import BlueprintCard
 
@@ -29,6 +30,7 @@ class BlueprintPanel(ctk.CTkFrame):
         self._blueprints = []
         self._selected_indices: set = set()
         self._recent_lookup = {}
+        self._empty_reason = "empty"
 
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=14, pady=(14, 6))
@@ -101,11 +103,19 @@ class BlueprintPanel(ctk.CTkFrame):
         )
         self._scroll_frame.pack(fill="both", expand=True, padx=10, pady=(0, 12))
 
-    def set_blueprints(self, blueprints):
+    def set_blueprints(self, blueprints, *, empty_reason: str = "empty"):
         """Populate the card list with blueprint data."""
         self._blueprints = blueprints
+        self._empty_reason = empty_reason if empty_reason in {"empty", "missing", "search"} else "empty"
         self._selected_indices.clear()
         self._rebuild_cards(blueprints)
+
+    def _empty_reason_for(self, blueprints) -> str:
+        if blueprints:
+            return "empty"
+        if self.search_var.get().strip() and self._blueprints:
+            return "search"
+        return self._empty_reason
 
     def _rebuild_cards(self, blueprints):
         """Rebuild all card widgets."""
@@ -114,22 +124,39 @@ class BlueprintPanel(ctk.CTkFrame):
         self._cards.clear()
 
         if not blueprints:
+            title, body = library_empty_copy(self._empty_reason_for(blueprints))
             empty = ctk.CTkFrame(self._scroll_frame, fg_color="transparent")
             empty.pack(fill="x", padx=8, pady=28)
             ctk.CTkLabel(
                 empty,
-                text="No blueprints here",
+                text=title,
                 font=TacticalTheme.FONT_LARGE,
                 text_color=TacticalTheme.TEXT_WHITE,
+                wraplength=280,
+                justify="center",
             ).pack(pady=(0, 6))
             ctk.CTkLabel(
                 empty,
-                text="Open your Space Engineers Blueprints folder\nto convert ships without touching XML.",
+                text=body,
                 font=TacticalTheme.FONT_SMALL,
                 text_color=TacticalTheme.TEXT_GRAY,
+                wraplength=280,
                 justify="center",
             ).pack(pady=(0, 12))
-            if self._on_browse:
+            if self._empty_reason_for(blueprints) == "search":
+                ctk.CTkButton(
+                    empty,
+                    text="Clear search",
+                    font=TacticalTheme.FONT_SMALL,
+                    fg_color=TacticalTheme.CYAN_PRIMARY,
+                    text_color=TacticalTheme.BG_DARK,
+                    hover_color=TacticalTheme.CYAN_DIM,
+                    width=140,
+                    height=32,
+                    corner_radius=8,
+                    command=lambda: self.search_var.set(""),
+                ).pack()
+            elif self._on_browse:
                 ctk.CTkButton(
                     empty,
                     text="Open folder",

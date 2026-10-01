@@ -5,11 +5,13 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from ui.labels import (
+    armor_change_message,
     armor_convertible_total,
     category_label,
     convert_button_text,
     convertible_total,
     grouped_category_ids,
+    pending_change_message,
 )
 from ui.theme import TacticalTheme
 from ui.widgets.progress_ring import ProgressRing
@@ -203,7 +205,11 @@ class ControlPanel(ctk.CTkFrame):
         ).pack(anchor="w", padx=14, pady=(12, 2))
         ctk.CTkLabel(
             category_frame,
-            text="Armor is the usual starting point. Add more only if you want those blocks swapped too.",
+            text=(
+                "Only checked categories are swapped. Everything else stays as it is, "
+                "including blocks this app has no verified subtype ID for. "
+                "Prototech stays off until you check it. Convert always saves a new copy."
+            ),
             font=TacticalTheme.FONT_SMALL,
             text_color=TacticalTheme.TEXT_GRAY,
             wraplength=280,
@@ -427,14 +433,8 @@ class ControlPanel(ctk.CTkFrame):
 
     def set_pending_change_count(self, count: int):
         """Accurate rewrite total from a dry-run, before the folder rescan finishes."""
-        if count <= 0:
-            self.change_summary.configure(
-                text="Nothing to convert with the current direction and categories."
-            )
-            return
-        block_word = "block" if count == 1 else "blocks"
         self.change_summary.configure(
-            text=f"{count} {block_word} will be rewritten in a new copy with the selected categories."
+            text=pending_change_message(count, self._selected_category_ids())
         )
 
     def _refresh_cta(self):
@@ -471,26 +471,14 @@ class ControlPanel(ctk.CTkFrame):
             after_heavy = heavy + armor_ready
         self.before_label.configure(text=f"{light} light\n{heavy} heavy")
         self.after_label.configure(text=f"{after_light} light\n{after_heavy} heavy")
-        if ready <= 0:
-            self.change_summary.configure(
-                text="Nothing to convert with the current direction and categories."
+        self.change_summary.configure(
+            text=armor_change_message(
+                ready=ready,
+                armor_ready=armor_ready,
+                reverse=self._reverse,
+                category_ids=self._selected_category_ids(),
             )
-            return
-        block_word = "block" if ready == 1 else "blocks"
-        direction = "heavy" if not self._reverse else "light"
-        if armor_ready == ready:
-            summary = (
-                f"{ready} {block_word} will be rewritten in a new copy toward {direction} armor."
-            )
-        elif armor_ready == 0:
-            summary = f"{ready} {block_word} will be rewritten using the selected categories."
-        else:
-            other = ready - armor_ready
-            summary = (
-                f"{ready} {block_word} will be rewritten "
-                f"({armor_ready} armor toward {direction}, {other} other)."
-            )
-        self.change_summary.configure(text=summary)
+        )
 
     def set_category_options(self, categories, enabled_categories):
         """Build grouped category checkboxes with human-readable labels."""
@@ -521,7 +509,7 @@ class ControlPanel(ctk.CTkFrame):
                 pair_count = len(category.pairs)
                 checkbox = ctk.CTkCheckBox(
                     self.category_checks_frame,
-                    text=f"{category_label(category.name)}  ·  {pair_count}",
+                    text=f"{category_label(category.name)}  ·  {pair_count} pairs",
                     variable=var,
                     font=TacticalTheme.FONT_SMALL,
                     text_color=TacticalTheme.TEXT_WHITE,
